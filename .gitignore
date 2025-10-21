@@ -6,6 +6,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.production
 
 # build output
 dist/
@@ -46,3 +47,9 @@ coverage/
 
 # misc
 *.tsbuildinfo
+
+# Claude local config
+.claude/
+
+# Optional (personal progress or local checkpoints)
+CHECKPOINTS.md
