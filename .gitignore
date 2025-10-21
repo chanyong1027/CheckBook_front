@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# environment variables
+.env
+.env.local
+.env.*.local
+
+# build output
+dist/
+dist-ssr/
+*.local
+
+# Vite
+.vite/
+
+# editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# testing
+coverage/
+*.coverage
+.nyc_output/
+
+# misc
+*.tsbuildinfo
