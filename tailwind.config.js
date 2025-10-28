@@ -4,9 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#3563E9',
-        secondary: '#EEF2FF',
-        accent: '#58D68D',
+        // 메인 색상: 노란색 계열로 변경
+        primary: '#F7B731', // 노란색 (기존 wishlist 색상)
+        secondary: '#FFF8E7', // 연한 노란색 배경
+        accent: '#FF6B9D', // 핑크색 강조
+
+        // 중립 색상
         neutral: {
           50: '#FAFAF9',
           100: '#F5F5F4',
@@ -15,12 +18,27 @@ export default {
           400: '#9CA3AF',
           500: '#6B7280',
           600: '#4B5563',
+          800: '#1F2937',
+          900: '#111827',
         },
+
+        // 상태 색상
         danger: '#E74C3C',
         success: '#58D68D',
-        wishlist: '#F7B731',
-        reading: '#5DADE2',
-        completed: '#58D68D',
+
+        // 독서 상태별 색상
+        wishlist: '#F7B731', // 노란색 (찜)
+        reading: '#5DADE2', // 파란색 (읽는중)
+        completed: '#58D68D', // 초록색 (완독)
+
+        // 차트 색상 (추가)
+        chart: {
+          yellow: '#F7B731',
+          gray: '#D1D5DB',
+          orange: '#FF8C42',
+          pink: '#FF6B9D',
+          blue: '#5DADE2',
+        },
       },
       fontFamily: {
         sans: [

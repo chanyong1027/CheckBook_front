@@ -10,7 +10,7 @@
  * <Header onSearch={(query) => navigate(`/search?q=${query}`)} />
  */
 
-import * as React from 'react';
+import * as React from "react";
 
 /**
  * Header Props
@@ -26,6 +26,8 @@ interface HeaderProps {
   userNickname?: string;
   /** 로그인 버튼 클릭 */
   onLogin?: () => void;
+  /** 회원가입 버튼 클릭 */
+  onSignup?: () => void;
   /** 로그아웃 버튼 클릭 */
   onLogout?: () => void;
   /** 마이페이지 버튼 클릭 */
@@ -43,11 +45,12 @@ export const Header: React.FC<HeaderProps> = ({
   isAuthenticated = false,
   userNickname,
   onLogin,
+  onSignup,
   onLogout,
   onMyPage,
-  className = '',
+  className = "",
 }) => {
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = React.useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -65,10 +68,10 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex-shrink-0">
             <button
               onClick={onLogoClick}
-              className="text-2xl font-bold text-blue-600 hover:text-blue-700 transition-colors"
+              className="text-2xl font-bold text-primary hover:opacity-80 transition-colors"
               aria-label="홈으로 이동"
             >
-              📚 CheckBook
+              CheckBook📚
             </button>
           </div>
 
@@ -101,14 +104,14 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* 사용자 메뉴 (데스크톱) */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
               <>
                 <button
                   onClick={onMyPage}
                   className="text-sm text-gray-700 hover:text-gray-900 font-medium"
                 >
-                  안녕하세요, {userNickname || '사용자'}님
+                  안녕하세요, {userNickname || "사용자"}님
                 </button>
                 <button
                   onClick={onLogout}
@@ -122,16 +125,28 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </>
             ) : (
-              <button
-                onClick={onLogin}
-                className="
-                  px-4 py-2 rounded-xl text-sm font-medium
-                  bg-blue-500 text-white
-                  hover:bg-blue-600 transition-colors
-                "
-              >
-                로그인
-              </button>
+              <>
+                <button
+                  onClick={onLogin}
+                  className="
+                    px-4 py-2 rounded-xl text-sm font-medium
+                    bg-primary text-white
+                    hover:opacity-90 transition-all
+                  "
+                >
+                  로그인
+                </button>
+                <button
+                  onClick={onSignup}
+                  className="
+                    px-4 py-2 rounded-xl text-sm font-medium
+                    bg-white text-primary border-2 border-primary
+                    hover:bg-primary hover:text-white transition-all
+                  "
+                >
+                  회원가입
+                </button>
+              </>
             )}
           </div>
 
@@ -141,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="md:hidden p-2"
             aria-label="메뉴 열기/닫기"
           >
-            <span className="text-2xl">{isMobileMenuOpen ? '✕' : '☰'}</span>
+            <span className="text-2xl">{isMobileMenuOpen ? "✕" : "☰"}</span>
           </button>
         </div>
 
@@ -191,12 +206,20 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </>
             ) : (
-              <button
-                onClick={onLogin}
-                className="block w-full px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                로그인
-              </button>
+              <>
+                <button
+                  onClick={onLogin}
+                  className="block w-full px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:opacity-90"
+                >
+                  로그인
+                </button>
+                <button
+                  onClick={onSignup}
+                  className="block w-full px-4 py-2 text-sm font-medium bg-white text-primary border-2 border-primary rounded-lg hover:bg-primary hover:text-white"
+                >
+                  회원가입
+                </button>
+              </>
             )}
           </div>
         </div>
