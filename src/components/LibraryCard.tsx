@@ -31,6 +31,8 @@ interface LibraryCardProps {
   showAddButton?: boolean;
   /** 삭제 버튼 표시 여부 */
   showRemoveButton?: boolean;
+  /** 이미 추가된 도서관인지 여부 */
+  isAdded?: boolean;
   /** 추가 버튼 클릭 핸들러 */
   onAdd?: (library: Library) => void;
   /** 삭제 버튼 클릭 핸들러 */
@@ -49,6 +51,7 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
   available,
   showAddButton = false,
   showRemoveButton = false,
+  isAdded = false,
   onAdd,
   onRemove,
   className = '',
@@ -145,16 +148,19 @@ export const LibraryCard: React.FC<LibraryCardProps> = ({
           {showAddButton && onAdd && (
             <button
               onClick={handleAdd}
-              disabled={isLoading}
-              className="
-                px-3 py-1 text-sm font-medium
-                bg-blue-500 text-white rounded-lg
-                hover:bg-blue-600 transition-colors
-                disabled:bg-gray-300 disabled:cursor-not-allowed
-              "
-              aria-label={`${library.name} 추가하기`}
+              disabled={isLoading || isAdded}
+              className={`
+                px-3 py-1 text-sm font-medium rounded-lg transition-colors
+                ${
+                  isAdded
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }
+                disabled:cursor-not-allowed
+              `}
+              aria-label={`${library.name} ${isAdded ? '추가됨' : '추가하기'}`}
             >
-              {isLoading ? '추가 중...' : '+ 추가'}
+              {isLoading ? '추가 중...' : isAdded ? '✓ 추가됨' : '+ 추가'}
             </button>
           )}
 

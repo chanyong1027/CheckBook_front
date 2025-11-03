@@ -32,6 +32,10 @@ interface HeaderProps {
   onLogout?: () => void;
   /** 마이페이지 버튼 클릭 */
   onMyPage?: () => void;
+  /** 내 도서관 버튼 클릭 */
+  onMyLibrary?: () => void;
+  /** 내 리뷰 버튼 클릭 */
+  onMyReview?: () => void;
   /** 추가 CSS 클래스 */
   className?: string;
 }
@@ -48,6 +52,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSignup,
   onLogout,
   onMyPage,
+  onMyLibrary,
+  onMyReview,
   className = "",
 }) => {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -76,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* 검색바 (데스크톱) */}
-          <div className="hidden md:block flex-1 max-w-2xl mx-8">
+          <div className="hidden md:block flex-1 max-w-lg mx-6">
             <form onSubmit={handleSearchSubmit}>
               <div className="relative">
                 <input
@@ -88,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
                     w-full px-4 py-2 pr-10
                     border border-gray-300 rounded-xl
                     focus:ring-2 focus:ring-blue-400 focus:border-transparent
-                    transition-all
+                    transition-all text-sm
                   "
                   aria-label="도서 검색"
                 />
@@ -103,20 +109,45 @@ export const Header: React.FC<HeaderProps> = ({
             </form>
           </div>
 
-          {/* 사용자 메뉴 (데스크톱) */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* 네비게이션 & 사용자 메뉴 (데스크톱) */}
+          <div className="hidden md:flex items-center gap-2">
+            {isAuthenticated && (
+              <>
+                <button
+                  onClick={onMyLibrary}
+                  className="
+                    px-3 py-2 rounded-xl text-sm font-medium
+                    bg-gray-50 text-gray-700
+                    hover:bg-gray-100 transition-colors
+                  "
+                >
+                  내 도서관
+                </button>
+                <button
+                  onClick={onMyReview}
+                  className="
+                    px-3 py-2 rounded-xl text-sm font-medium
+                    bg-gray-50 text-gray-700
+                    hover:bg-gray-100 transition-colors
+                  "
+                >
+                  내 리뷰
+                </button>
+              </>
+            )}
+
             {isAuthenticated ? (
               <>
                 <button
                   onClick={onMyPage}
-                  className="text-sm text-gray-700 hover:text-gray-900 font-medium"
+                  className="text-sm text-gray-700 hover:text-gray-900 font-medium px-2"
                 >
                   안녕하세요, {userNickname || "사용자"}님
                 </button>
                 <button
                   onClick={onLogout}
                   className="
-                    px-4 py-2 rounded-xl text-sm font-medium
+                    px-3 py-2 rounded-xl text-sm font-medium
                     bg-gray-100 text-gray-700
                     hover:bg-gray-200 transition-colors
                   "
@@ -192,6 +223,21 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="px-4 py-3 space-y-2">
             {isAuthenticated ? (
               <>
+                <div className="px-4 py-2 text-sm text-gray-700 font-medium">
+                  안녕하세요, {userNickname || "사용자"}님
+                </div>
+                <button
+                  onClick={onMyLibrary}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                >
+                  내 도서관
+                </button>
+                <button
+                  onClick={onMyReview}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                >
+                  내 리뷰
+                </button>
                 <button
                   onClick={onMyPage}
                   className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"

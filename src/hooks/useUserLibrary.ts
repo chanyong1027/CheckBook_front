@@ -6,6 +6,7 @@
  * - 로컬 상태와 서버 동기화 자동 처리
  * - 낙관적 업데이트(Optimistic Update) 지원
  * - 에러 발생 시 자동 롤백
+ * - Mock 모드 지원: VITE_USE_MOCK=true일 때 API 호출하지 않음
  *
  * @example
  * const { myLibraries, addLibrary, isAdding } = useUserLibrary();
@@ -22,6 +23,12 @@ import {
 } from '@/api/libraries';
 import { QUERY_KEYS } from '@/utils/constants';
 import type { Library } from '@/types/library';
+
+/**
+ * Mock 모드 여부 확인
+ * @description VITE_USE_MOCK 환경변수가 'true'이면 Mock 모드
+ */
+const isMockMode = import.meta.env.VITE_USE_MOCK === 'true';
 
 /**
  * 사용자 도서관 관리 훅
@@ -60,7 +67,7 @@ export const useUserLibrary = () => {
     hasLibrary,
   } = useLibraryStore();
 
-  // 서버에서 도서관 목록 조회
+  // 서버에서 도서관 목록 조회 (Mock 모드에서는 비활성화)
   const {
     data: serverLibraries,
     isLoading,
@@ -69,25 +76,39 @@ export const useUserLibrary = () => {
     refetch,
   } = useQuery<Library[], Error>({
     queryKey: [QUERY_KEYS.USER_LIBRARIES],
-    queryFn: fetchUserLibraries,
+    queryFn: isMockMode
+      ? async () => {
+          // Mock 모드: 빈 배열 반환 (Zustand 스토어의 데이터 사용)
+          console.log('[Mock Mode] fetchUserLibraries - Zustand 스토어의 로컬 데이터 사용');
+          return [];
+        }
+      : fetchUserLibraries,
     staleTime: 10 * 60 * 1000, // 10분
     gcTime: 30 * 60 * 1000, // 30분
 
-    // 초기 로드 시에만 자동 실행
+    // Mock 모드에서는 초기 로드 스킵
+    enabled: !isMockMode,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
-  // 서버 데이터를 받아오면 Zustand 스토어에 동기화
+  // 서버 데이터를 받아오면 Zustand 스토어에 동기화 (Mock 모드 제외)
   React.useEffect(() => {
-    if (serverLibraries) {
+    if (serverLibraries && !isMockMode) {
       setLibrariesInStore(serverLibraries);
     }
   }, [serverLibraries, setLibrariesInStore]);
 
   // 도서관 추가 뮤테이션
   const addMutation = useMutation<Library[], Error, Library, { previousLibraries?: Library[] }>({
-    mutationFn: (library: Library) => addUserLibrary(library.id),
+    mutationFn: isMockMode
+      ? async (library: Library) => {
+          // Mock 모드: 로컬 스토어만 업데이트
+          console.log('[Mock Mode] addLibrary - 로컬 스토어만 업데이트:', library.name);
+          await new Promise((resolve) => setTimeout(resolve, 300)); // 네트워크 지연 시뮬레이션
+          return [library]; // 반환값은 사용되지 않음
+        }
+      : (library: Library) => addUserLibrary(library.id),
 
     // 낙관적 업데이트
     onMutate: async (library) => {
@@ -105,10 +126,12 @@ export const useUserLibrary = () => {
       }
 
       // 낙관적으로 쿼리 캐시 업데이트
-      queryClient.setQueryData<Library[]>([QUERY_KEYS.USER_LIBRARIES], (old = []) => [
-        ...old,
-        library,
-      ]);
+      if (!isMockMode) {
+        queryClient.setQueryData<Library[]>([QUERY_KEYS.USER_LIBRARIES], (old = []) => [
+          ...old,
+          library,
+        ]);
+      }
 
       // 롤백을 위해 이전 상태 반환
       return { previousLibraries };
@@ -116,21 +139,30 @@ export const useUserLibrary = () => {
 
     // 에러 발생 시 롤백
     onError: (_error, _library, context) => {
-      if (context?.previousLibraries) {
+      if (context?.previousLibraries && !isMockMode) {
         queryClient.setQueryData([QUERY_KEYS.USER_LIBRARIES], context.previousLibraries);
         setLibrariesInStore(context.previousLibraries);
       }
     },
 
-    // 성공 또는 실패 후 서버 데이터 다시 가져오기
+    // 성공 또는 실패 후 서버 데이터 다시 가져오기 (Mock 모드 제외)
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_LIBRARIES] });
+      if (!isMockMode) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_LIBRARIES] });
+      }
     },
   });
 
   // 도서관 제거 뮤테이션
   const removeMutation = useMutation<Library[], Error, string, { previousLibraries?: Library[] }>({
-    mutationFn: (libraryId: string) => removeUserLibrary(libraryId),
+    mutationFn: isMockMode
+      ? async (libraryId: string) => {
+          // Mock 모드: 로컬 스토어만 업데이트
+          console.log('[Mock Mode] removeLibrary - 로컬 스토어만 업데이트:', libraryId);
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          return [];
+        }
+      : (libraryId: string) => removeUserLibrary(libraryId),
 
     // 낙관적 업데이트
     onMutate: async (libraryId) => {
@@ -141,32 +173,43 @@ export const useUserLibrary = () => {
       // Zustand 스토어에서 제거
       removeLibraryFromStore(libraryId);
 
-      // 쿼리 캐시에서 제거
-      queryClient.setQueryData<Library[]>([QUERY_KEYS.USER_LIBRARIES], (old = []) =>
-        old.filter((lib) => lib.id !== libraryId)
-      );
+      // 쿼리 캐시에서 제거 (Mock 모드 제외)
+      if (!isMockMode) {
+        queryClient.setQueryData<Library[]>([QUERY_KEYS.USER_LIBRARIES], (old = []) =>
+          old.filter((lib) => lib.id !== libraryId)
+        );
+      }
 
       return { previousLibraries };
     },
 
     onError: (_error, _libraryId, context) => {
-      if (context?.previousLibraries) {
+      if (context?.previousLibraries && !isMockMode) {
         queryClient.setQueryData([QUERY_KEYS.USER_LIBRARIES], context.previousLibraries);
         setLibrariesInStore(context.previousLibraries);
       }
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_LIBRARIES] });
+      if (!isMockMode) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_LIBRARIES] });
+      }
     },
   });
 
   // 도서관 순서 변경 뮤테이션
   const reorderMutation = useMutation<Library[], Error, Library[], { previousLibraries?: Library[] }>({
-    mutationFn: (libraries: Library[]) => {
-      const libraryIds = libraries.map((lib) => lib.id);
-      return reorderUserLibraries(libraryIds);
-    },
+    mutationFn: isMockMode
+      ? async (libraries: Library[]) => {
+          // Mock 모드: 로컬 스토어만 업데이트
+          console.log('[Mock Mode] reorderLibraries - 로컬 스토어만 업데이트');
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          return libraries;
+        }
+      : (libraries: Library[]) => {
+          const libraryIds = libraries.map((lib) => lib.id);
+          return reorderUserLibraries(libraryIds);
+        },
 
     // 낙관적 업데이트
     onMutate: async (libraries) => {
@@ -177,28 +220,32 @@ export const useUserLibrary = () => {
       // Zustand 스토어 업데이트
       reorderLibrariesInStore(libraries);
 
-      // 쿼리 캐시 업데이트
-      queryClient.setQueryData([QUERY_KEYS.USER_LIBRARIES], libraries);
+      // 쿼리 캐시 업데이트 (Mock 모드 제외)
+      if (!isMockMode) {
+        queryClient.setQueryData([QUERY_KEYS.USER_LIBRARIES], libraries);
+      }
 
       return { previousLibraries };
     },
 
     onError: (_error, _libraries, context) => {
-      if (context?.previousLibraries) {
+      if (context?.previousLibraries && !isMockMode) {
         queryClient.setQueryData([QUERY_KEYS.USER_LIBRARIES], context.previousLibraries);
         setLibrariesInStore(context.previousLibraries);
       }
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_LIBRARIES] });
+      if (!isMockMode) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_LIBRARIES] });
+      }
     },
   });
 
   return {
     // 상태
     /** 내 도서관 목록 (Zustand 스토어) */
-    myLibraries,
+    myLibraries: myLibraries || [],
 
     /** 서버 도서관 목록 */
     serverLibraries,
@@ -279,6 +326,6 @@ export const useIsLibraryRegistered = (libraryId: string): boolean => {
  * }
  */
 export const useCanAddLibrary = (): boolean => {
-  const myLibraries = useLibraryStore((state) => state.myLibraries);
+  const myLibraries = useLibraryStore((state) => state.myLibraries || []);
   return myLibraries.length < 3;
 };

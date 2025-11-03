@@ -28,6 +28,9 @@ export {
   StatusCard,
 } from './StatusToggle';
 
+export { BookStateEditModal } from './BookStateEditModal';
+export { BookShelfPanel } from './BookShelfPanel';
+
 // ==================== 상태 표시 컴포넌트 ====================
 export {
   LoadingSpinner,

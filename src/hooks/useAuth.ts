@@ -3,20 +3,64 @@
  *
  * @description
  * - JWT 토큰 기반 인증 관리
- * - 로그인/로그아웃 상태 관리
- * - 사용자 프로필 조회 및 업데이트
- * - 자동 토큰 갱신 지원
+ * - localStorage 기반 사용자 정보 저장
+ * - 로그아웃은 클라이언트에서만 토큰 삭제 (서버 API 호출 없음)
  *
  * @example
  * const { user, signin, signout, isAuthenticated } = useAuth();
  */
 
 import * as React from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { login, signup, logout, fetchUserProfile } from '@/api/user';
-import { setAuthToken, removeAuthToken } from '@/api/index';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { login, signup } from '@/api/user';
+import { setAuthToken, removeAuthToken, getAuthToken } from '@/api/index';
 import { QUERY_KEYS } from '@/utils/constants';
 import type { User, LoginRequest, SignupRequest } from '@/types/user';
+
+/**
+ * localStorage 키 상수
+ */
+const STORAGE_KEYS = {
+  USER: 'checkbook_user',
+} as const;
+
+/**
+ * localStorage에서 사용자 정보 읽기
+ */
+const getUserFromStorage = (): User | null => {
+  try {
+    const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+    if (!storedUser) return null;
+
+    const user = JSON.parse(storedUser) as User;
+    return user;
+  } catch (error) {
+    console.error('Failed to parse user from localStorage:', error);
+    return null;
+  }
+};
+
+/**
+ * localStorage에 사용자 정보 저장
+ */
+const saveUserToStorage = (user: User): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+  } catch (error) {
+    console.error('Failed to save user to localStorage:', error);
+  }
+};
+
+/**
+ * localStorage에서 사용자 정보 삭제
+ */
+const removeUserFromStorage = (): void => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.USER);
+  } catch (error) {
+    console.error('Failed to remove user from localStorage:', error);
+  }
+};
 
 /**
  * 인증 상태 관리 훅
@@ -43,31 +87,12 @@ import type { User, LoginRequest, SignupRequest } from '@/types/user';
 export const useAuth = () => {
   const queryClient = useQueryClient();
 
-  // 사용자 프로필 조회 (토큰이 있을 때만)
-  const {
-    data: user,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery<User | null, Error>({
-    queryKey: [QUERY_KEYS.USER_PROFILE],
-    queryFn: async () => {
-      try {
-        return await fetchUserProfile();
-      } catch (error: any) {
-        // 401 에러면 인증되지 않은 것으로 처리
-        if (error.status === 401) {
-          removeAuthToken();
-          return null;
-        }
-        throw error;
-      }
-    },
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5분
-    gcTime: 10 * 60 * 1000, // 10분
-    refetchOnWindowFocus: false,
+  // localStorage에서 초기 사용자 정보 읽기
+  const [user, setUser] = React.useState<User | null>(() => {
+    const token = getAuthToken();
+    if (!token) return null;
+
+    return getUserFromStorage();
   });
 
   // 로그인 뮤테이션
@@ -78,61 +103,86 @@ export const useAuth = () => {
   >({
     mutationFn: login,
     onSuccess: (data) => {
-      // 토큰 저장
+      // 토큰 저장 (localStorage: 'checkbook_token')
       setAuthToken(data.accessToken);
 
-      // 사용자 정보 캐시 업데이트
+      // 사용자 정보 저장 (localStorage: 'checkbook_user')
+      saveUserToStorage(data.user);
+
+      // 상태 업데이트
+      setUser(data.user);
+
+      // React Query 캐시 업데이트
       queryClient.setQueryData([QUERY_KEYS.USER_PROFILE], data.user);
+    },
+    onError: (error) => {
+      console.error('로그인 실패:', error);
+      // 에러 발생 시 상태 초기화
+      removeAuthToken();
+      removeUserFromStorage();
+      setUser(null);
     },
   });
 
   // 회원가입 뮤테이션
   const signupMutation = useMutation<User, Error, SignupRequest>({
     mutationFn: signup,
-    onSuccess: (user) => {
+    onSuccess: (newUser) => {
       // 회원가입 후 자동 로그인은 하지 않음
-      // 필요하다면 여기서 자동 로그인 로직 추가
-      queryClient.setQueryData([QUERY_KEYS.USER_PROFILE], user);
+      // 사용자가 직접 로그인 페이지에서 로그인하도록 유도
+      console.log('회원가입 성공:', newUser);
+    },
+    onError: (error) => {
+      console.error('회원가입 실패:', error);
     },
   });
 
-  // 로그아웃 뮤테이션
-  const signoutMutation = useMutation<void, Error>({
-    mutationFn: logout,
-    onSuccess: () => {
-      // 토큰 제거
+  /**
+   * 로그아웃 (클라이언트 전용 - 서버 API 호출 없음)
+   *
+   * @description
+   * - localStorage에서 토큰 삭제
+   * - localStorage에서 사용자 정보 삭제
+   * - React Query 캐시 초기화
+   * - 로컬 상태 초기화
+   */
+  const signout = React.useCallback(() => {
+    try {
+      // 1. 토큰 제거
       removeAuthToken();
 
-      // 모든 쿼리 캐시 무효화
-      queryClient.clear();
+      // 2. 사용자 정보 제거
+      removeUserFromStorage();
 
-      // 사용자 정보 초기화
-      queryClient.setQueryData([QUERY_KEYS.USER_PROFILE], null);
-    },
-    onError: () => {
-      // 에러가 발생해도 로컬 상태는 초기화
-      removeAuthToken();
+      // 3. 로컬 상태 초기화
+      setUser(null);
+
+      // 4. React Query 캐시 무효화
       queryClient.clear();
       queryClient.setQueryData([QUERY_KEYS.USER_PROFILE], null);
-    },
-  });
+
+      console.log('로그아웃 완료');
+    } catch (error) {
+      console.error('로그아웃 중 오류 발생:', error);
+    }
+  }, [queryClient]);
 
   return {
     // 상태
     /** 현재 로그인한 사용자 정보 (없으면 null) */
-    user: user ?? null,
+    user,
 
     /** 인증 여부 */
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!getAuthToken(),
 
     /** 로딩 중 여부 */
-    isLoading,
+    isLoading: false, // localStorage 기반이므로 즉시 로드
 
     /** 에러 발생 여부 */
-    isError,
+    isError: false,
 
     /** 에러 객체 */
-    error,
+    error: null,
 
     // 함수
     /**
@@ -148,14 +198,24 @@ export const useAuth = () => {
     signup: (userData: SignupRequest) => signupMutation.mutateAsync(userData),
 
     /**
-     * 로그아웃
+     * 로그아웃 (클라이언트 전용)
      */
-    signout: () => signoutMutation.mutateAsync(),
+    signout,
 
     /**
      * 사용자 정보 다시 가져오기
+     * (localStorage 기반이므로 즉시 반영)
      */
-    refetch,
+    refetch: () => {
+      const token = getAuthToken();
+      if (!token) {
+        setUser(null);
+        return;
+      }
+
+      const storedUser = getUserFromStorage();
+      setUser(storedUser);
+    },
 
     // 뮤테이션 상태
     /** 로그인 중 여부 */
@@ -165,7 +225,7 @@ export const useAuth = () => {
     isSigningUp: signupMutation.isPending,
 
     /** 로그아웃 중 여부 */
-    isSigningOut: signoutMutation.isPending,
+    isSigningOut: false, // 클라이언트 전용이므로 즉시 완료
   };
 };
 

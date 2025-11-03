@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { toast } from 'react-toastify';
+import { useAuth } from '@/hooks/useAuth';
+import { setAuthToken } from '@/api/index';
+import type { User } from '@/types/user';
 
 // 로그인 폼 스키마
 const loginSchema = z.object({
@@ -14,6 +18,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { signin } = useAuth();
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
   const {
     register,
     handleSubmit,
@@ -24,16 +31,60 @@ export const LoginPage: React.FC = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      // TODO: API 연동 - 실제 로그인 처리
-      console.log('로그인 데이터:', data);
+      setErrorMessage('');
 
-      // 임시: 2초 대기 후 홈으로 이동
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // 🚧 임시: API 연동 전 Mock 로그인
+      // TODO: 백엔드 API 연동 시 아래 주석 해제하고 Mock 로그인 제거
+      /*
+      await signin({
+        userEmail: data.email,
+        userPw: data.password,
+      });
+      */
+
+      // === Mock 로그인 시작 (API 연동 전 임시 코드) ===
+      console.log('🚧 Mock 로그인 실행:', data);
+
+      // 임시 대기 (서버 호출 시뮬레이션)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // localStorage에서 회원가입한 사용자 데이터 조회
+      const existingUsers = JSON.parse(
+        localStorage.getItem('checkbook_mock_users') || '{}'
+      );
+      const signupData = existingUsers[data.email];
+
+      // Mock 사용자 정보 생성 (회원가입 데이터가 있으면 사용, 없으면 이메일로 생성)
+      const mockUser: User = {
+        id: `user-${Date.now()}`,
+        email: data.email,
+        nickname: signupData?.nickname || data.email.split('@')[0], // 저장된 닉네임 사용
+        gender: signupData?.gender,
+        ageGroup: signupData?.ageGroup,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Mock JWT 토큰 저장
+      const mockToken = `mock-jwt-token-${Date.now()}`;
+      setAuthToken(mockToken);
+
+      // 사용자 정보를 localStorage에 저장
+      localStorage.setItem('checkbook_user', JSON.stringify(mockUser));
+
+      console.log('✅ Mock 로그인 성공:', mockUser);
+      // === Mock 로그인 끝 ===
+
+      toast.success('로그인 성공!');
 
       // 로그인 성공 시 홈으로 이동
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('로그인 실패:', error);
+
+      const message = error?.message || '로그인에 실패했습니다. 다시 시도해주세요.';
+      setErrorMessage(message);
+      toast.error(message);
     }
   };
 
@@ -49,6 +100,13 @@ export const LoginPage: React.FC = () => {
         {/* 로그인 카드 */}
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <h2 className="text-2xl font-semibold text-gray-900 mb-6">로그인</h2>
+
+          {/* 에러 메시지 */}
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+              <p className="text-sm text-red-600">{errorMessage}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* 이메일 입력 */}

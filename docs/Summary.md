@@ -585,3 +585,235 @@ export function useBookSearch(keyword: string) {
 **작성자**: Claude Code
 **최종 수정**: 2025-10-23
 **버전**: 1.0
+
+---
+
+## 🆕 2025-10-30 업데이트: 현재 프론트엔드 진행 상황
+
+### ✅ 완료된 주요 개선사항
+
+#### 1. Mock 모드 인프라 구축 ✅
+**문제**: API 없이 HTML이 반환되어 Zustand에 잘못된 데이터 저장
+**해결**:
+- ✅ `.env.development` 생성 (`VITE_USE_MOCK=true`)
+- ✅ `useUserLibrary` 훅에서 Mock 모드 분기 처리
+- ✅ Zustand persist migration 추가 (잘못된 데이터 자동 정리)
+- ✅ 모든 `.map()` 호출에 방어 코드 (`|| []`)
+- ✅ `CLEAR_STORAGE.md` 가이드 문서 작성
+
+**파일**: `.env.development`, `src/hooks/useUserLibrary.ts`, `src/store/useLibraryStore.ts`
+
+#### 2. HomePage 디자인 개선 ✅
+**변경 사항**:
+- ✅ Hero 배너: 카드 형태 + 그라데이션 배경 (`from-yellow-50 via-pink-50 to-pink-100`)
+- ✅ 베스트셀러 섹션: 카드 안에 배치 (`bg-white rounded-2xl shadow-lg`)
+- ✅ 신간 도서 섹션 추가 (2024년 출판 책 6권)
+- ✅ Footer 간소화 (3칸→2칸, 바로가기 제거, 높이 축소)
+- ✅ 전체 페이지 여백 통일 (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`)
+
+**파일**: `src/pages/HomePage.tsx`, `src/components/Layout/Footer.tsx`, `src/utils/mockData.ts`
+
+#### 3. MyLibraryPage UX 개선 ✅
+**문제**: 도서관 추가 후 검색 결과 사라짐, 중복 추가 방지 부족
+**해결**:
+- ✅ 추가 후에도 검색 결과 유지
+- ✅ `LibraryCard`에 `isAdded` prop 추가 → "✓ 추가됨" 회색 버튼 표시
+- ✅ 중복 추가 시 alert 메시지
+- ✅ 추가된 도서관은 disabled 상태로 클릭 불가
+
+**파일**: `src/pages/MyLibraryPage.tsx`, `src/components/LibraryCard.tsx`
+
+#### 4. ReviewPage 신규 페이지 구현 ✅
+**기능**:
+- ✅ "읽고 있는 책" / "다 읽은 책" 탭 분리
+- ✅ 책 정보 (이미지, 제목, 저자, 별점) + 리뷰 textarea
+- ✅ 페이지네이션 (10개씩)
+- ✅ 인라인 편집 (Edit/Save/Cancel)
+- ✅ Zustand store 연동
+
+**파일**: `src/pages/ReviewPage.tsx`, `src/App.tsx` (라우팅 추가)
+
+#### 5. Header 내비게이션 개선 ✅
+**추가**:
+- ✅ "내 도서관" 버튼 → `/mylibrary`
+- ✅ "내 리뷰" 버튼 → `/review`
+- ✅ 검색바 너비 조정 (`max-w-lg`)
+- ✅ 모바일 메뉴에도 반영
+
+**파일**: `src/components/Layout/Header.tsx`, `src/App.tsx`
+
+---
+
+### 🔴 남은 우선순위 작업
+
+#### P0 (긴급 - API 연동 필수)
+
+1. **useAuth 훅 구현 및 인증 흐름** ⚠️ **최우선**
+   - **현재 상태**: `useAuth.ts` 파일은 존재하지만 실제 API 호출 없음
+   - **필요 작업**:
+     - [ ] `signin()` 함수에서 `POST /api/users/login` 호출
+     - [ ] JWT 토큰 localStorage 저장
+     - [ ] `signout()` 함수에서 localStorage 삭제
+     - [ ] `isAuthenticated` 상태 관리
+   - **파일**: `src/hooks/useAuth.ts`, `src/pages/LoginPage.tsx`, `src/pages/SignupPage.tsx`
+
+2. **BookDetailPage 완성** ⚠️ **최우선**
+   - **현재 상태**: Mock 데이터로 기본 레이아웃만 구현됨
+   - **필요 작업**:
+     - [ ] API 연동: `GET /api/books/detail/{isbn}`
+     - [ ] 도서관 가용성 표시 (내 도서관 우선)
+     - [ ] 독서 상태 토글 버튼 (찜/읽는 중/완독)
+     - [ ] 리뷰 섹션 통합
+   - **백엔드 확인 필요**: 도서관 가용성 정보가 응답에 포함되는지 확인
+   - **파일**: `src/pages/BookDetailPage.tsx`, `src/api/books.ts`
+
+3. **SearchResultPage 완성**
+   - **현재 상태**: 빈 스켈레톤만 존재
+   - **필요 작업**:
+     - [ ] `useBookSearch` 훅 구현 (React Query useInfiniteQuery)
+     - [ ] BookCard 그리드 레이아웃
+     - [ ] 무한 스크롤 또는 페이지네이션
+     - [ ] 로딩/에러/Empty 상태 처리
+   - **파일**: `src/pages/SearchResultPage.tsx`, `src/hooks/useBookSearch.ts`
+
+4. **Axios 인터셉터 활성화**
+   - **현재 상태**: `src/api/index.ts`에 인터셉터 구조는 있으나 실제 사용 안 함
+   - **필요 작업**:
+     - [ ] JWT 토큰 자동 첨부
+     - [ ] 401 에러 시 로그아웃 처리
+     - [ ] 네트워크 에러 Toast 알림
+   - **파일**: `src/api/index.ts`
+
+#### P1 (필수 - 기능 완성)
+
+1. **MyPage API 연동**
+   - **현재 상태**: Mock 데이터로 차트 및 책 리스트 표시
+   - **필요 작업**:
+     - [ ] `GET /api/records/my?status=` 호출
+     - [ ] 상태 전환 API 연동 (`PATCH /api/records/{recordId}`)
+     - [ ] 차트 데이터 실제 API 연동
+   - **백엔드 확인 필요**: 장르 통계, 월별 독서 통계 API 존재 여부
+   - **파일**: `src/pages/MyPage.tsx`, `src/hooks/useUserBookState.ts`
+
+2. **MyLibraryPage API 연동**
+   - **현재 상태**: Mock 데이터로 도서관 검색 구현
+   - **필요 작업**:
+     - [ ] `GET /api/libraries/search` 호출
+     - [ ] `POST /api/libraries/{libraryId}/my-library` 연동
+     - [ ] `DELETE /api/libraries/{libraryId}/my-library` 연동
+   - **파일**: `src/pages/MyLibraryPage.tsx`, `src/api/libraries.ts`
+
+3. **BookStateEditModal API 연동**
+   - **현재 상태**: 로컬 Zustand store만 업데이트
+   - **필요 작업**:
+     - [ ] 저장 시 서버에 반영 (`PATCH /api/records/{recordId}`)
+     - [ ] 낙관적 업데이트 (Optimistic Update)
+   - **파일**: `src/components/BookStateEditModal.tsx`
+
+4. **Toast 알림 통합**
+   - **현재 상태**: `react-toastify` 설정만 있고 실제 사용 안 함
+   - **필요 작업**:
+     - [ ] 성공 메시지 Toast로 변경 (alert 제거)
+     - [ ] 에러 메시지 Toast로 통합
+   - **파일**: 모든 페이지 컴포넌트
+
+#### P2 (품질 개선)
+
+1. **이미지 최적화**
+   - **문제**: 모든 책 이미지가 `/example_image.png`로 통일
+   - **필요 작업**:
+     - [ ] 실제 API 이미지 URL 연동
+     - [ ] lazy loading 적용
+     - [ ] placeholder 이미지 개선
+
+2. **ErrorBoundary 구현**
+   - **필요 작업**:
+     - [ ] 글로벌 ErrorBoundary 컴포넌트 생성
+     - [ ] 페이지별 ErrorBoundary 적용
+
+3. **로딩 상태 개선**
+   - **필요 작업**:
+     - [ ] 스켈레톤 UI 통일
+     - [ ] Suspense 적용
+
+---
+
+### 📊 현재 구현 완성도 (2025-10-30 기준)
+
+| 영역 | 완성도 | 상태 |
+|------|--------|------|
+| **인증 (Login/Signup)** | 80% | 🟡 UI 완성, API 연동 필요 |
+| **HomePage** | 95% | 🟢 디자인 완료, API 연동만 남음 |
+| **SearchResultPage** | 20% | 🔴 스켈레톤만 존재 |
+| **BookDetailPage** | 50% | 🟡 레이아웃 있음, API 연동 필요 |
+| **MyPage** | 85% | 🟡 Mock 데이터로 완성, API 연동 필요 |
+| **MyLibraryPage** | 80% | 🟡 Mock 검색 완성, API 연동 필요 |
+| **ReviewPage** | 90% | 🟢 기능 완성, API 연동만 남음 |
+| **Header/Footer** | 100% | 🟢 완성 |
+| **Mock 인프라** | 100% | 🟢 완성 |
+| **Zustand Store** | 90% | 🟡 구조 완성, API 연동 필요 |
+
+---
+
+### 🎯 다음 세션 권장 작업 순서
+
+#### Week 1: 인증 및 핵심 페이지 API 연동
+1. **useAuth 훅 완성** (0.5일)
+   - `signin()`, `signout()` API 호출
+   - JWT 저장/관리
+   - Protected Route 구현
+
+2. **SearchResultPage 구현** (1일)
+   - `useBookSearch` 훅 생성
+   - 무한 스크롤 구현
+   - BookCard 그리드
+
+3. **BookDetailPage API 연동** (1.5일)
+   - 도서 상세 API 호출
+   - 도서관 가용성 표시
+   - 독서 상태 토글
+
+#### Week 2: 기능 완성 및 통합
+1. **MyPage API 연동** (1일)
+   - 독서 기록 API 호출
+   - 상태 전환 연동
+
+2. **MyLibraryPage API 연동** (0.5일)
+   - 도서관 검색 API 호출
+   - CRUD 연동
+
+3. **Toast 알림 통합** (0.5일)
+   - alert → toast 변경
+   - 에러 메시지 통합
+
+4. **통합 테스트** (0.5일)
+   - 로그인 → 검색 → 상세 → 상태 변경 플로우 확인
+
+---
+
+### 💡 주요 개선 포인트
+
+1. **Mock 모드 활용**
+   - 백엔드 없이도 개발 가능한 인프라 구축 완료
+   - `VITE_USE_MOCK=false`로 변경 시 즉시 API 연동 모드 전환
+
+2. **디자인 시스템 정립**
+   - 레퍼런스 이미지 기반 통일된 디자인
+   - Tailwind CSS 기반 일관된 스타일링
+   - 반응형 레이아웃 완성
+
+3. **상태 관리 구조**
+   - Zustand + React Query 조합 완성
+   - Persist 기능으로 로컬 데이터 저장
+   - Migration으로 데이터 무결성 보장
+
+4. **컴포넌트 재사용성**
+   - LibraryCard, BookCard 등 범용 컴포넌트
+   - LoadingSpinner, EmptyState 등 공통 UI
+   - 일관된 Props 패턴
+
+---
+
+**업데이트 작성자**: Claude Code
+**업데이트 일시**: 2025-10-30
+**다음 업데이트**: API 연동 완료 후

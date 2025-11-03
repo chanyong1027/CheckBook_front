@@ -8,6 +8,16 @@
 export type ReadingState = 'WISHLIST' | 'READING' | 'READ';
 
 /**
+ * 성별 타입
+ */
+export type Gender = 'male' | 'female';
+
+/**
+ * 연령대 타입
+ */
+export type AgeGroup = '10대' | '20대' | '30대' | '40대' | '50대' | '60대 이상';
+
+/**
  * 사용자 정보 인터페이스
  */
 export interface User {
@@ -20,11 +30,20 @@ export interface User {
   /** 닉네임 */
   nickname: string;
 
+  /** 성별 (선택적) */
+  gender?: Gender;
+
+  /** 연령대 (선택적) */
+  ageGroup?: AgeGroup;
+
   /** 프로필 이미지 URL (선택적) */
   profileImageUrl?: string;
 
   /** 가입일 (선택적) */
   createdAt?: string;
+
+  /** 마지막 수정일 (선택적) */
+  updatedAt?: string;
 
   /** 마지막 로그인 시간 (선택적) */
   lastLoginAt?: string;
@@ -119,4 +138,10 @@ export interface SignupRequest {
 
   /** 닉네임 */
   nickname: string;
+
+  /** 성별 (선택적) */
+  gender?: Gender;
+
+  /** 연령대 (선택적) */
+  ageGroup?: AgeGroup;
 }

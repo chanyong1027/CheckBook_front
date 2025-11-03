@@ -12,22 +12,24 @@
  */
 
 import * as React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorState, NotFoundState } from '@/components/ErrorState';
-import { StatusCard } from '@/components/StatusToggle';
+import { BookShelfPanel } from '@/components/BookShelfPanel';
 import { EmptyLibraryList } from '@/components/EmptyState';
 import { useBookDetail } from '@/hooks/useBookDetail';
 import { useBookAvailability } from '@/hooks/useBookAvailability';
 import { useUserBookState } from '@/hooks/useUserBookState';
+import { useBookStateStore } from '@/store/useBookStateStore';
 import { formatRating } from '@/utils/formatters';
-import type { ReadingState } from '@/types/user';
+import { findBookById } from '@/utils/mockData';
+import type { ReadingState, UserBookState } from '@/types/user';
 
 /**
  * BookDetailPage Props
  */
 interface BookDetailPageProps {
-  /** 도서 ID */
-  bookId?: string;
   /** 뒤로가기 핸들러 */
   onGoBack?: () => void;
   /** 도서관 관리 페이지 이동 */
@@ -38,15 +40,26 @@ interface BookDetailPageProps {
  * 도서 상세 페이지 컴포넌트
  */
 export const BookDetailPage: React.FC<BookDetailPageProps> = ({
-  bookId,
   onGoBack,
   onGoToLibrary,
 }) => {
-  // @ts-ignore - 향후 편집 UI를 위해 예약됨
-  const [_isEditingState, setIsEditingState] = React.useState(false);
+  // URL 파라미터에서 bookId 가져오기
+  const { id: bookId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-  // 도서 상세 정보
-  const { book, isLoading, isError, error, isNotFound } = useBookDetail(bookId);
+  // 편집 모달 상태
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+
+  // 🚧 임시: Mock 데이터에서 도서 찾기 (API 연동 전)
+  const mockBook = bookId ? findBookById(bookId) : undefined;
+  const [isLoading] = React.useState(false);
+
+  // TODO: API 연동 시 아래 주석 해제하고 Mock 코드 제거
+  // const { book, isLoading, isError, error, isNotFound } = useBookDetail(bookId);
+  const book = mockBook;
+  const isNotFound = !mockBook;
+  const isError = false;
+  const error = null;
 
   // 도서관 가용성 (내 도서관 기준)
   const {
@@ -65,12 +78,27 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
     isUpdating,
   } = useUserBookState(bookId);
 
+  // Zustand store
+  const { setBookState: saveBookState } = useBookStateStore();
+
   // 독서 상태 변경
   const handleStateChange = async (state: ReadingState) => {
     try {
       await updateState({ state });
     } catch (error) {
       console.error('Failed to update state:', error);
+    }
+  };
+
+  // 독서 상태 상세 정보 저장
+  const handleSaveBookState = (state: UserBookState) => {
+    try {
+      saveBookState(state);
+      toast.success('독서 상태가 저장되었습니다!');
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error('독서 상태 저장 실패:', error);
+      toast.error('독서 상태 저장에 실패했습니다.');
     }
   };
 
@@ -92,7 +120,7 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
         <div className="max-w-4xl mx-auto px-4">
           <NotFoundState
             message="요청하신 도서를 찾을 수 없습니다"
-            onGoBack={onGoBack}
+            onGoBack={onGoBack || (() => navigate(-1))}
           />
         </div>
       </div>
@@ -114,14 +142,12 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-8">
         {/* 뒤로가기 */}
-        {onGoBack && (
-          <button
-            onClick={onGoBack}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            ← 뒤로가기
-          </button>
-        )}
+        <button
+          onClick={onGoBack || (() => navigate(-1))}
+          className="text-sm text-gray-600 hover:text-gray-900"
+        >
+          ← 뒤로가기
+        </button>
 
         {/* 도서 정보 섹션 */}
         <section className="bg-white rounded-2xl p-6 shadow-sm">
@@ -141,45 +167,84 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
 
             {/* 도서 메타 정보 */}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">
+              <h1 className="text-2xl font-bold text-gray-900 mb-3">
                 {book.title}
               </h1>
 
-              <div className="space-y-2 mb-4">
-                <p className="text-lg text-gray-700">
-                  <span className="font-medium">저자:</span> {book.author}
+              <div className="space-y-1 mb-3">
+                <p className="text-sm text-gray-600">
+                  {book.author} · {book.publisher} · {book.pubYear}
                 </p>
-                <p className="text-base text-gray-600">
-                  <span className="font-medium">출판사:</span> {book.publisher} ({book.pubYear})
+                <p className="text-xs text-gray-400">
+                  ISBN: {book.isbn13}
                 </p>
-                <p className="text-sm text-gray-500">
-                  <span className="font-medium">ISBN:</span> {book.isbn13}
-                </p>
+                {/* 별점 표시 */}
+                {book.rating !== undefined && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-yellow-400 text-sm">
+                      {formatRating(book.rating)}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {book.rating.toFixed(1)}
+                    </span>
+                  </div>
+                )}
               </div>
-
-              {/* 별점 */}
-              {book.rating !== undefined && (
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-yellow-400 text-xl">
-                    {formatRating(book.rating)}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    ({book.rating.toFixed(1)}/5.0)
-                  </span>
-                </div>
-              )}
 
               {/* 도서 설명 */}
               {book.description && (
-                <div className="mt-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">책 소개</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed">
+                <div className="mb-4">
+                  <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
                     {book.description}
                   </p>
                 </div>
               )}
+
+              {/* 찜하기 + 내 서재에 추가 버튼 */}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    const isWishlisted = currentState === 'WISHLIST';
+                    if (isWishlisted) {
+                      // 찜 해제
+                      // TODO: 실제로는 removeBookState 사용
+                      toast.info('찜하기가 해제되었습니다.');
+                    } else {
+                      handleStateChange('WISHLIST');
+                      toast.success('찜 목록에 추가되었습니다!');
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                    currentState === 'WISHLIST'
+                      ? 'border-red-300 bg-red-50 text-red-600'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>{currentState === 'WISHLIST' ? '♥' : '♡'}</span>
+                  <span className="text-sm font-medium">찜하기</span>
+                </button>
+
+                <button
+                  onClick={() => setIsEditModalOpen(!isEditModalOpen)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition-colors font-medium text-sm"
+                >
+                  내 서재에 추가
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* 내 서재에 추가 확장 패널 */}
+          {isEditModalOpen && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <BookShelfPanel
+                bookId={bookId || ''}
+                currentState={bookState ?? undefined}
+                onSave={handleSaveBookState}
+                onClose={() => setIsEditModalOpen(false)}
+              />
+            </div>
+          )}
         </section>
 
         {/* 도서관 가용성 섹션 */}
@@ -254,19 +319,6 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
           )}
         </section>
 
-        {/* 독서 상태 섹션 */}
-        <section>
-          <StatusCard
-            currentState={currentState}
-            rating={bookState?.rating}
-            comment={bookState?.comment}
-            startDate={bookState?.startDate}
-            endDate={bookState?.endDate}
-            onChange={handleStateChange}
-            onEdit={() => setIsEditingState(true)}
-            disabled={isUpdating}
-          />
-        </section>
       </div>
     </div>
   );

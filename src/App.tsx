@@ -20,12 +20,16 @@ import { SearchResultPage } from '@/pages/SearchResultPage';
 import { BookDetailPage } from '@/pages/BookDetailPage';
 import { MyLibraryPage } from '@/pages/MyLibraryPage';
 import MyPage from '@/pages/MyPage';
+import { ReviewPage } from '@/pages/ReviewPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { SignupPage } from '@/pages/SignupPage';
 
 // Layout
 import { Header } from '@/components/Layout/Header';
 import { Footer } from '@/components/Layout/Footer';
+
+// Hooks
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * React Query 클라이언트 설정
@@ -50,6 +54,15 @@ const queryClient = new QueryClient({
  */
 function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const { user, isAuthenticated, signout } = useAuth();
+
+  /**
+   * 로그아웃 핸들러
+   */
+  const handleLogout = () => {
+    signout();
+    navigate('/');
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
@@ -59,7 +72,12 @@ function Layout({ children }: { children: React.ReactNode }) {
         onLogin={() => navigate('/login')}
         onSignup={() => navigate('/signup')}
         onMyPage={() => navigate('/mypage')}
+        onMyLibrary={() => navigate('/mylibrary')}
+        onMyReview={() => navigate('/review')}
+        onLogout={handleLogout}
         onSearch={(query) => navigate(`/search?q=${query}`)}
+        isAuthenticated={isAuthenticated}
+        userNickname={user?.nickname}
       />
 
       {/* 메인 콘텐츠 영역 */}
@@ -103,6 +121,9 @@ function App() {
 
                   {/* 나의 독서 기록 페이지 */}
                   <Route path="/mypage" element={<MyPage />} />
+
+                  {/* 내 리뷰 페이지 */}
+                  <Route path="/review" element={<ReviewPage />} />
 
                   {/* 404 페이지 */}
                   <Route

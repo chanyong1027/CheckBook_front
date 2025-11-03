@@ -210,7 +210,8 @@ export const useReadBooks = () =>
 /**
  * 상태별 도서 수
  */
-export const useBookStateCounts = () => useBookStateStore((state) => state.getStateCounts());
+export const useBookStateCounts = () =>
+  useBookStateStore((state) => state.getStateCounts());
 
 /**
  * 전체 독서 기록 수

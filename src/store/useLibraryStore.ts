@@ -82,7 +82,7 @@ export const useLibraryStore = create<LibraryStore>()(
 
         // 도서관 추가
         addLibrary: (library) => {
-          const currentLibraries = get().myLibraries;
+          const currentLibraries = get().myLibraries || [];
 
           // 이미 등록된 도서관인지 확인
           if (currentLibraries.some((lib) => lib.id === library.id)) {
@@ -133,7 +133,8 @@ export const useLibraryStore = create<LibraryStore>()(
 
         // 도서관 등록 여부 확인
         hasLibrary: (id) => {
-          return get().myLibraries.some((lib) => lib.id === id);
+          const libraries = get().myLibraries || [];
+          return libraries.some((lib) => lib.id === id);
         },
 
         // 모든 도서관 제거
@@ -167,6 +168,19 @@ export const useLibraryStore = create<LibraryStore>()(
         partialize: (state) => ({
           myLibraries: state.myLibraries,
         }),
+        // 마이그레이션: 잘못된 데이터 정리
+        migrate: (persistedState: any, _version: number) => {
+          // persistedState의 myLibraries가 배열이 아니면 초기화
+          if (persistedState && !Array.isArray(persistedState.myLibraries)) {
+            console.warn('[Migration] myLibraries가 배열이 아닙니다. 초기화합니다.');
+            return {
+              ...persistedState,
+              myLibraries: [],
+            };
+          }
+          return persistedState;
+        },
+        version: 1, // 버전 번호
       }
     ),
     {
@@ -182,16 +196,16 @@ export const useLibraryStore = create<LibraryStore>()(
 /**
  * 내 도서관 개수 조회
  */
-export const useLibraryCount = () => useLibraryStore((state) => state.myLibraries.length);
+export const useLibraryCount = () => useLibraryStore((state) => (state.myLibraries || []).length);
 
 /**
  * 도서관 등록 여부 확인
  */
 export const useHasLibrary = (id: string) =>
-  useLibraryStore((state) => state.myLibraries.some((lib) => lib.id === id));
+  useLibraryStore((state) => (state.myLibraries || []).some((lib) => lib.id === id));
 
 /**
  * 도서관 추가 가능 여부
  */
 export const useCanAddLibrary = () =>
-  useLibraryStore((state) => state.myLibraries.length < MAX_MY_LIBRARIES);
+  useLibraryStore((state) => (state.myLibraries || []).length < MAX_MY_LIBRARIES);
