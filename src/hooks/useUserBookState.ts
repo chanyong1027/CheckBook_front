@@ -17,6 +17,7 @@ import { useBookStateStore } from '@/store/useBookStateStore';
 import {
   fetchUserBookStates,
   fetchUserBookState,
+  createUserBookState,
   updateUserBookState,
   deleteUserBookState,
 } from '@/api/user';
@@ -40,6 +41,9 @@ import type { UserBookState, ReadingState } from '@/types/user';
 export const useUserBookStates = (state?: ReadingState) => {
   const { setBookStates } = useBookStateStore();
 
+  // 인증 토큰 확인
+  const hasToken = !!localStorage.getItem('accessToken');
+
   const {
     data: bookStates,
     isLoading,
@@ -49,6 +53,7 @@ export const useUserBookStates = (state?: ReadingState) => {
   } = useQuery<UserBookState[], Error>({
     queryKey: state ? [QUERY_KEYS.USER_BOOK_STATE, state] : [QUERY_KEYS.USER_BOOK_STATE],
     queryFn: () => fetchUserBookStates(state),
+    enabled: hasToken, // 토큰이 있을 때만 활성화
     staleTime: 5 * 60 * 1000, // 5분
     gcTime: 10 * 60 * 1000, // 10분
   });
@@ -118,6 +123,9 @@ export const useUserBookState = (bookId: string | undefined) => {
     getBookState,
   } = useBookStateStore();
 
+  // 인증 토큰 확인
+  const hasToken = !!localStorage.getItem('accessToken');
+
   // 서버에서 상태 조회
   const {
     data: bookState,
@@ -133,7 +141,7 @@ export const useUserBookState = (bookId: string | undefined) => {
       }
       return fetchUserBookState(bookId);
     },
-    enabled: !!bookId,
+    enabled: !!bookId && hasToken, // 토큰이 있을 때만 활성화
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -145,18 +153,31 @@ export const useUserBookState = (bookId: string | undefined) => {
     }
   }, [bookState, bookId, setBookStateInStore]);
 
-  // 상태 업데이트 뮤테이션
+  // 상태 업데이트 뮤테이션 (생성 또는 수정)
   const updateMutation = useMutation<
     UserBookState,
     Error,
     Partial<Omit<UserBookState, 'bookId'>>,
     { previousState?: UserBookState | null }
   >({
-    mutationFn: (stateData) => {
+    mutationFn: async (stateData) => {
       if (!bookId) {
         throw new Error('Book ID is required');
       }
-      return updateUserBookState(bookId, stateData);
+
+      // 기존 상태가 있으면 수정, 없으면 생성
+      const existing = bookState || localState;
+
+      if (existing && existing.recordId) {
+        // 수정: recordId가 있으면 PATCH 요청
+        if (stateData.state) {
+          return updateUserBookState(existing.recordId, stateData.state);
+        }
+        throw new Error('State is required for update');
+      } else {
+        // 생성: POST 요청 (기본 상태는 Wish)
+        return createUserBookState(bookId);
+      }
     },
 
     // 낙관적 업데이트
@@ -210,10 +231,11 @@ export const useUserBookState = (bookId: string | undefined) => {
   // 상태 삭제 뮤테이션
   const removeMutation = useMutation<void, Error, void, { previousState?: UserBookState | null }>({
     mutationFn: () => {
-      if (!bookId) {
-        throw new Error('Book ID is required');
+      const existing = bookState || localState;
+      if (!existing || !existing.recordId) {
+        throw new Error('Record ID is required for deletion');
       }
-      return deleteUserBookState(bookId);
+      return deleteUserBookState(existing.recordId);
     },
 
     // 낙관적 업데이트

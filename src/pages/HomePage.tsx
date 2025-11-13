@@ -10,9 +10,12 @@
  * @version 2.0
  */
 
-import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getBestsellers, getNewBooks } from '@/utils/mockData';
+import * as React from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { fetchBestsellers, fetchNewReleases } from "@/api/books";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ErrorState } from "@/components/ErrorState";
 
 /**
  * HomePage Props
@@ -29,9 +32,18 @@ export const HomePage: React.FC<HomePageProps> = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = React.useState(0);
 
-  // 🚧 임시: Mock 데이터 (API 연동 전)
-  const bestsellers = getBestsellers();
-  const newBooks = getNewBooks();
+  // 실제 API 연동
+  const { data: bestsellers = [], isLoading: loadingBestsellers, error: errorBestsellers } = useQuery({
+    queryKey: ['bestsellers'],
+    queryFn: fetchBestsellers,
+    staleTime: 10 * 60 * 1000, // 10분
+  });
+
+  const { data: newBooks = [], isLoading: loadingNewBooks, error: errorNewBooks } = useQuery({
+    queryKey: ['newReleases'],
+    queryFn: fetchNewReleases,
+    staleTime: 10 * 60 * 1000, // 10분
+  });
 
   // 베스트셀러: 페이지당 6개씩 표시
   const booksPerPage = 6;
@@ -70,20 +82,20 @@ export const HomePage: React.FC<HomePageProps> = () => {
               <div className="text-right">
                 {/* 배지 */}
                 <span className="inline-block px-3 py-1 bg-accent text-white text-xs md:text-sm rounded-full mb-3">
-                  배경
+                  CheckBook
                 </span>
 
                 {/* 메인 타이틀 */}
                 <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-3 md:mb-4 leading-tight">
-                  오늘의 독서를 기록해보세요!
+                  책을 찾고, 읽고, 기록하는 모든 순간
                 </h1>
 
                 {/* 설명 텍스트 */}
                 <p className="text-sm md:text-base text-gray-600 leading-relaxed mb-2">
-                  책을 읽다가 감동 깊었던 내용이나 기억나지 않는 점들이 있으신가요?
+                  읽고 싶은 책이 있다면, 가까운 도서관에서 찾아보세요.
                 </p>
                 <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-                  마이페이지에서 등으로 루분을 기록하고 공유해 보세요!
+                  책을 읽고 느낀 생각까지 자연스럽게 기록해보세요.
                 </p>
               </div>
             </div>
@@ -95,6 +107,19 @@ export const HomePage: React.FC<HomePageProps> = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 카드 래퍼 */}
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+          {loadingBestsellers ? (
+            <div className="flex justify-center items-center py-20">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : errorBestsellers ? (
+            <ErrorState
+              error={errorBestsellers as Error}
+              onRetry={() => window.location.reload()}
+            />
+          ) : bestsellers.length === 0 ? (
+            <p className="text-center text-gray-500 py-10">베스트셀러 정보를 불러올 수 없습니다.</p>
+          ) : (
+            <>
           {/* 섹션 헤더 */}
           <div className="mb-6">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -109,19 +134,19 @@ export const HomePage: React.FC<HomePageProps> = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6 mb-6">
             {displayedBooks.map((book) => (
               <div
-                key={book.id}
+                key={book.id ?? book.isbn13}
                 className="cursor-pointer group"
-                onClick={() => navigate(`/book/${book.id}`)}
+                onClick={() => navigate(`/book/${book.id ?? book.isbn13}`)}
               >
                 {/* 도서 커버 */}
                 <div className="aspect-[2/3] bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
                   <img
-                    src={book.coverUrl ?? '/placeholder-book.png'}
+                    src={book.cover ?? book.coverUrl ?? "/placeholder-book.png"}
                     alt={`${book.title} 표지`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder-book.png';
+                      target.src = "/placeholder-book.png";
                     }}
                   />
                 </div>
@@ -146,13 +171,15 @@ export const HomePage: React.FC<HomePageProps> = () => {
                 <button
                   key={index}
                   className={`w-2 h-2 rounded-full transition-all ${
-                    currentPage === index ? 'bg-primary w-6' : 'bg-gray-300'
+                    currentPage === index ? "bg-primary w-6" : "bg-gray-300"
                   }`}
                   onClick={() => setCurrentPage(index)}
                   aria-label={`페이지 ${index + 1}`}
                 />
               ))}
             </div>
+          )}
+            </>
           )}
         </div>
       </section>
@@ -161,33 +188,46 @@ export const HomePage: React.FC<HomePageProps> = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 카드 래퍼 */}
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-          {/* 섹션 헤더 */}
-          <div className="mb-6">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-              📘 신간 도서
-            </h2>
-            <p className="text-gray-600 text-sm">
-              2024년 따끈따끈한 신간을 소개합니다
-            </p>
-          </div>
+          {loadingNewBooks ? (
+            <div className="flex justify-center items-center py-20">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : errorNewBooks ? (
+            <ErrorState
+              error={errorNewBooks as Error}
+              onRetry={() => window.location.reload()}
+            />
+          ) : newBooks.length === 0 ? (
+            <p className="text-center text-gray-500 py-10">신간 정보를 불러올 수 없습니다.</p>
+          ) : (
+            <>
+              {/* 섹션 헤더 */}
+              <div className="mb-6">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  📘 신간 도서
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  따끈따끈한 신간을 소개합니다
+                </p>
+              </div>
 
-          {/* 도서 그리드 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-            {newBooks.map((book) => (
+              {/* 도서 그리드 */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
+                {newBooks.slice(0, 12).map((book) => (
               <div
-                key={book.id}
+                key={book.id ?? book.isbn13}
                 className="cursor-pointer group"
-                onClick={() => navigate(`/book/${book.id}`)}
+                onClick={() => navigate(`/book/${book.id ?? book.isbn13}`)}
               >
                 {/* 도서 커버 */}
                 <div className="aspect-[2/3] bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
                   <img
-                    src={book.coverUrl ?? '/placeholder-book.png'}
+                    src={book.cover ?? book.coverUrl ?? "/placeholder-book.png"}
                     alt={`${book.title} 표지`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder-book.png';
+                      target.src = "/placeholder-book.png";
                     }}
                   />
                 </div>
@@ -203,7 +243,9 @@ export const HomePage: React.FC<HomePageProps> = () => {
                 </div>
               </div>
             ))}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </section>
     </div>

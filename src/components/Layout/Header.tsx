@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { useLocation } from "react-router-dom";
 
 /**
  * Header Props
@@ -56,8 +57,16 @@ export const Header: React.FC<HeaderProps> = ({
   onMyReview,
   className = "",
 }) => {
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  // 홈페이지로 돌아올 때 검색어 초기화
+  React.useEffect(() => {
+    if (location.pathname === '/') {
+      setSearchQuery("");
+    }
+  }, [location.pathname]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

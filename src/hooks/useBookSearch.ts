@@ -78,14 +78,17 @@ export const useBookSearch = ({
     // 초기 페이지 파라미터 (React Query v5 필수)
     initialPageParam: 1,
 
-    // 다음 페이지 파라미터 계산
-    getNextPageParam: (lastPage) => {
-      return lastPage.hasNextPage ? lastPage.page + 1 : undefined;
+    // 다음 페이지 파라미터 계산 (백엔드는 totalResults만 제공)
+    getNextPageParam: (lastPage, allPages) => {
+      const currentPage = allPages.length;
+      const totalPages = Math.ceil(lastPage.totalResults / pageSize);
+      return currentPage < totalPages ? currentPage + 1 : undefined;
     },
 
     // 이전 페이지 파라미터 계산 (선택적)
-    getPreviousPageParam: (firstPage) => {
-      return firstPage.page > 1 ? firstPage.page - 1 : undefined;
+    getPreviousPageParam: (firstPage, allPages) => {
+      const currentPage = allPages.length;
+      return currentPage > 1 ? currentPage - 1 : undefined;
     },
 
     // 검색어가 비어있으면 쿼리 비활성화
@@ -108,7 +111,7 @@ export const useBookSearch = ({
   const books: Book[] = data?.pages.flatMap((page) => page.books) ?? [];
 
   // 전체 결과 수 (첫 페이지 기준)
-  const totalCount = data?.pages[0]?.totalCount ?? 0;
+  const totalCount = data?.pages[0]?.totalResults ?? 0;
 
   // 현재 로드된 페이지 수
   const loadedPages = data?.pages.length ?? 0;

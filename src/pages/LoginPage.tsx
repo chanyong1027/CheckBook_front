@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { toast } from 'react-toastify';
-import { useAuth } from '@/hooks/useAuth';
-import { setAuthToken } from '@/api/index';
-import type { User } from '@/types/user';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "react-toastify";
+import { useAuth } from "@/hooks/useAuth";
+import { setAuthToken } from "@/api/index";
+import type { User } from "@/types/user";
 
 // 로그인 폼 스키마
 const loginSchema = z.object({
-  email: z.string().email('올바른 이메일 형식을 입력해주세요.'),
-  password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다.'),
+  email: z.string().email("올바른 이메일 형식을 입력해주세요."),
+  password: z.string().min(6, "비밀번호는 최소 6자 이상이어야 합니다."),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -19,7 +19,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { signin } = useAuth();
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const {
     register,
@@ -31,58 +31,23 @@ export const LoginPage: React.FC = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      setErrorMessage('');
+      setErrorMessage("");
 
-      // 🚧 임시: API 연동 전 Mock 로그인
-      // TODO: 백엔드 API 연동 시 아래 주석 해제하고 Mock 로그인 제거
-      /*
+      // 실제 API 호출
       await signin({
         userEmail: data.email,
         userPw: data.password,
       });
-      */
 
-      // === Mock 로그인 시작 (API 연동 전 임시 코드) ===
-      console.log('🚧 Mock 로그인 실행:', data);
-
-      // 임시 대기 (서버 호출 시뮬레이션)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // localStorage에서 회원가입한 사용자 데이터 조회
-      const existingUsers = JSON.parse(
-        localStorage.getItem('checkbook_mock_users') || '{}'
-      );
-      const signupData = existingUsers[data.email];
-
-      // Mock 사용자 정보 생성 (회원가입 데이터가 있으면 사용, 없으면 이메일로 생성)
-      const mockUser: User = {
-        id: `user-${Date.now()}`,
-        email: data.email,
-        nickname: signupData?.nickname || data.email.split('@')[0], // 저장된 닉네임 사용
-        gender: signupData?.gender,
-        ageGroup: signupData?.ageGroup,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Mock JWT 토큰 저장
-      const mockToken = `mock-jwt-token-${Date.now()}`;
-      setAuthToken(mockToken);
-
-      // 사용자 정보를 localStorage에 저장
-      localStorage.setItem('checkbook_user', JSON.stringify(mockUser));
-
-      console.log('✅ Mock 로그인 성공:', mockUser);
-      // === Mock 로그인 끝 ===
-
-      toast.success('로그인 성공!');
+      toast.success("로그인 성공!");
 
       // 로그인 성공 시 홈으로 이동
-      navigate('/');
+      navigate("/");
     } catch (error: any) {
-      console.error('로그인 실패:', error);
+      console.error("로그인 실패:", error);
 
-      const message = error?.message || '로그인에 실패했습니다. 다시 시도해주세요.';
+      const message =
+        error?.message || "로그인에 실패했습니다. 다시 시도해주세요.";
       setErrorMessage(message);
       toast.error(message);
     }
@@ -93,7 +58,7 @@ export const LoginPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* 로고 섹션 */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Book📚</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">CheckBook📚</h1>
           <p className="text-gray-600">독서 기록을 시작하세요</p>
         </div>
 
@@ -111,39 +76,49 @@ export const LoginPage: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* 이메일 입력 */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 이메일
               </label>
               <input
                 id="email"
                 type="email"
-                {...register('email')}
+                {...register("email")}
                 className={`w-full px-4 py-3 rounded-xl border ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
+                  errors.email ? "border-red-500" : "border-gray-300"
                 } focus:ring-2 focus:ring-primary focus:border-transparent transition-all`}
                 placeholder="example@email.com"
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             {/* 비밀번호 입력 */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 비밀번호
               </label>
               <input
                 id="password"
                 type="password"
-                {...register('password')}
+                {...register("password")}
                 className={`w-full px-4 py-3 rounded-xl border ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
+                  errors.password ? "border-red-500" : "border-gray-300"
                 } focus:ring-2 focus:ring-primary focus:border-transparent transition-all`}
                 placeholder="••••••••"
               />
               {errors.password && (
-                <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
@@ -153,15 +128,18 @@ export const LoginPage: React.FC = () => {
               disabled={isSubmitting}
               className="w-full bg-primary text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? '로그인 중...' : '로그인'}
+              {isSubmitting ? "로그인 중..." : "로그인"}
             </button>
           </form>
 
           {/* 회원가입 링크 */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              계정이 없으신가요?{' '}
-              <Link to="/signup" className="text-primary font-semibold hover:underline">
+              계정이 없으신가요?{" "}
+              <Link
+                to="/signup"
+                className="text-primary font-semibold hover:underline"
+              >
                 회원가입
               </Link>
             </p>

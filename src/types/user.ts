@@ -8,14 +8,14 @@
 export type ReadingState = 'WISHLIST' | 'READING' | 'READ';
 
 /**
- * 성별 타입
+ * 성별 타입 (백엔드 Gender enum에 맞춤)
  */
-export type Gender = 'male' | 'female';
+export type Gender = 'MALE' | 'FEMALE';
 
 /**
- * 연령대 타입
+ * 연령대 타입 (백엔드 AgeGroup enum에 맞춤)
  */
-export type AgeGroup = '10대' | '20대' | '30대' | '40대' | '50대' | '60대 이상';
+export type AgeGroup = 'TEENS' | 'TWENTIES' | 'THIRTIES' | 'FORTIES' | 'FIFTIES' | 'SIXTIES_PLUS';
 
 /**
  * 사용자 정보 인터페이스
@@ -53,7 +53,7 @@ export interface User {
  * 사용자의 도서별 독서 상태 인터페이스
  */
 export interface UserBookState {
-  /** 도서 ID */
+  /** 도서 ID (ISBN-13) */
   bookId: string;
 
   /** 독서 상태 (찜, 읽는 중, 완독) */
@@ -76,6 +76,18 @@ export interface UserBookState {
 
   /** 수정일시 (선택적) */
   updatedAt?: string;
+
+  /** 백엔드 기록 ID (수정/삭제 시 필요) */
+  recordId?: number;
+
+  /** 책 제목 (선택적, 표시용) */
+  bookTitle?: string;
+
+  /** 책 저자 (선택적, 표시용) */
+  bookAuthor?: string;
+
+  /** 책 표지 URL (선택적, 표시용) */
+  bookCover?: string;
 }
 
 /**
@@ -116,28 +128,28 @@ export interface AuthToken {
 }
 
 /**
- * 로그인 요청 인터페이스
+ * 로그인 요청 인터페이스 (백엔드 API 형식)
  */
 export interface LoginRequest {
   /** 이메일 주소 */
-  email: string;
+  userEmail: string;
 
   /** 비밀번호 */
-  password: string;
+  userPw: string;
 }
 
 /**
- * 회원가입 요청 인터페이스
+ * 회원가입 요청 인터페이스 (백엔드 API 형식)
  */
 export interface SignupRequest {
   /** 이메일 주소 */
-  email: string;
+  userEmail: string;
 
   /** 비밀번호 */
-  password: string;
+  userPw: string;
 
   /** 닉네임 */
-  nickname: string;
+  userNm: string;
 
   /** 성별 (선택적) */
   gender?: Gender;

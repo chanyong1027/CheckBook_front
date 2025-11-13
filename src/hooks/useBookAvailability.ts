@@ -19,26 +19,22 @@ import type { BookLibraryAvailability } from '@/types/book';
 /**
  * 도서 가용성 조회 훅
  *
- * @param bookId - 도서 ID
- * @param libraryIds - 조회할 도서관 ID 배열 (선택적, 없으면 내 도서관 기준)
+ * @param isbn - 도서 ISBN-13
+ * @param region - 지역 코드 (예: '11' for 서울) (선택적, 기본값: '11')
  * @param options - 추가 옵션
- * @returns 도서관별 가용성 정보 및 상태
+ * @returns 도서관별 가용성 정보 및 상태 (내 도서관 우선 정렬)
  *
  * @example
- * // 내 도서관 기준 조회
- * const { availability, isLoading } = useBookAvailability('book-123');
+ * // 서울 지역 도서관 가용성 조회 (내 도서관 우선)
+ * const { availability, isLoading } = useBookAvailability('9788937460890', '11');
  *
  * availability.forEach(item => {
- *   console.log(`${item.libraryId}: ${item.available ? '대출 가능' : '대출 중'}`);
+ *   console.log(`${item.libraryName}: ${item.available ? '대출 가능' : '대출 중'}`);
  * });
  *
  * @example
- * // 특정 도서관만 조회
- * const { availability } = useBookAvailability('book-123', ['lib-1', 'lib-2']);
- *
- * @example
  * // 수동 제어
- * const { availability, refetch } = useBookAvailability('book-123', undefined, {
+ * const { availability, refetch } = useBookAvailability('9788937460890', '11', {
  *   enabled: false
  * });
  *
@@ -48,21 +44,14 @@ import type { BookLibraryAvailability } from '@/types/book';
  * };
  */
 export const useBookAvailability = (
-  bookId: string | undefined,
-  libraryIds?: string[],
+  isbn: string | undefined,
+  region: string = '11', // 기본값: 서울
   options?: {
     enabled?: boolean;
     staleTime?: number;
     refetchInterval?: number;
   }
 ) => {
-  // 내 도서관 목록 가져오기 (libraryIds가 없을 때)
-  const myLibraries = useLibraryStore((state) => state.myLibraries);
-  const myLibraryIds = myLibraries.map((lib) => lib.id);
-
-  // 사용할 도서관 ID 목록 결정
-  const targetLibraryIds = libraryIds ?? myLibraryIds;
-
   const {
     data: availability,
     isLoading,
@@ -71,14 +60,14 @@ export const useBookAvailability = (
     refetch,
     isFetching,
   } = useQuery<BookLibraryAvailability[], Error>({
-    queryKey: [QUERY_KEYS.BOOK_AVAILABILITY, bookId, targetLibraryIds],
+    queryKey: [QUERY_KEYS.BOOK_AVAILABILITY, isbn, region],
     queryFn: () => {
-      if (!bookId) {
-        throw new Error('Book ID is required');
+      if (!isbn) {
+        throw new Error('ISBN is required');
       }
-      return fetchBookAvailability(bookId, targetLibraryIds.length > 0 ? targetLibraryIds : undefined);
+      return fetchBookAvailability(isbn, region);
     },
-    enabled: !!bookId && targetLibraryIds.length > 0 && (options?.enabled ?? true),
+    enabled: !!isbn && !!region && (options?.enabled ?? true),
     staleTime: options?.staleTime ?? 2 * 60 * 1000, // 2분 (가용성은 자주 변경될 수 있음)
     gcTime: 5 * 60 * 1000, // 5분
     refetchOnWindowFocus: true, // 포커스 시 자동 갱신
@@ -99,7 +88,7 @@ export const useBookAvailability = (
   const unavailableLibraries = availability?.filter((item) => !item.available) ?? [];
 
   return {
-    /** 도서관별 가용성 정보 배열 */
+    /** 도서관별 가용성 정보 배열 (내 도서관 우선 정렬됨) */
     availability: availability ?? [],
 
     /** 가용성 정보를 도서관 ID로 빠르게 조회 */
@@ -129,22 +118,25 @@ export const useBookAvailability = (
     /** 수동 리페치 */
     refetch,
 
-    /** 조회 중인 도서관 수 */
-    libraryCount: targetLibraryIds.length,
+    /** 조회된 도서관 수 */
+    libraryCount: availability?.length ?? 0,
   };
 };
 
 /**
  * 특정 도서관에서의 도서 가용성만 조회하는 훅
+ * (레거시 - 새로운 API에서는 지역별로 조회하므로 거의 사용하지 않음)
  *
- * @param bookId - 도서 ID
+ * @param isbn - 도서 ISBN-13
  * @param libraryId - 도서관 ID
+ * @param region - 지역 코드
  * @returns 해당 도서관의 가용성 정보
  *
  * @example
  * const { isAvailable, availableCount, isLoading } = useBookAvailabilityAtLibrary(
- *   'book-123',
- *   'lib-456'
+ *   '9788937460890',
+ *   '12345',
+ *   '11'
  * );
  *
  * return (
@@ -152,7 +144,7 @@ export const useBookAvailability = (
  *     {isLoading ? (
  *       <Skeleton />
  *     ) : isAvailable ? (
- *       <Badge>대출 가능 ({availableCount}권)</Badge>
+ *       <Badge>대출 가능</Badge>
  *     ) : (
  *       <Badge variant="gray">대출 중</Badge>
  *     )}
@@ -160,12 +152,13 @@ export const useBookAvailability = (
  * );
  */
 export const useBookAvailabilityAtLibrary = (
-  bookId: string | undefined,
-  libraryId: string | undefined
+  isbn: string | undefined,
+  libraryId: string | undefined,
+  region: string = '11'
 ) => {
   const { availability, isLoading, isError, error, refetch } = useBookAvailability(
-    bookId,
-    libraryId ? [libraryId] : undefined
+    isbn,
+    region
   );
 
   const libraryAvailability = availability.find((item) => item.libraryId === libraryId);

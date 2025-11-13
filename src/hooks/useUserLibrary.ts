@@ -100,13 +100,12 @@ export const useUserLibrary = () => {
   }, [serverLibraries, setLibrariesInStore]);
 
   // 도서관 추가 뮤테이션
-  const addMutation = useMutation<Library[], Error, Library, { previousLibraries?: Library[] }>({
+  const addMutation = useMutation<void, Error, Library, { previousLibraries?: Library[] }>({
     mutationFn: isMockMode
       ? async (library: Library) => {
           // Mock 모드: 로컬 스토어만 업데이트
           console.log('[Mock Mode] addLibrary - 로컬 스토어만 업데이트:', library.name);
           await new Promise((resolve) => setTimeout(resolve, 300)); // 네트워크 지연 시뮬레이션
-          return [library]; // 반환값은 사용되지 않음
         }
       : (library: Library) => addUserLibrary(library.id),
 
@@ -154,13 +153,12 @@ export const useUserLibrary = () => {
   });
 
   // 도서관 제거 뮤테이션
-  const removeMutation = useMutation<Library[], Error, string, { previousLibraries?: Library[] }>({
+  const removeMutation = useMutation<void, Error, string, { previousLibraries?: Library[] }>({
     mutationFn: isMockMode
       ? async (libraryId: string) => {
           // Mock 모드: 로컬 스토어만 업데이트
           console.log('[Mock Mode] removeLibrary - 로컬 스토어만 업데이트:', libraryId);
           await new Promise((resolve) => setTimeout(resolve, 300));
-          return [];
         }
       : (libraryId: string) => removeUserLibrary(libraryId),
 

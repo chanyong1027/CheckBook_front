@@ -50,42 +50,14 @@ export const SignupPage: React.FC = () => {
     try {
       setErrorMessage('');
 
-      // 🚧 임시: API 연동 전 Mock 회원가입
-      // TODO: 백엔드 API 연동 시 아래 주석 해제하고 Mock 회원가입 제거
-      /*
+      // 실제 API 호출 (빈 문자열은 undefined로 변환)
       await signup({
         userEmail: data.email,
-        userNickname: data.nickname,
+        userNm: data.nickname,
         userPw: data.password,
+        gender: data.gender && data.gender !== '' ? (data.gender as Gender) : undefined,
+        ageGroup: data.ageGroup && data.ageGroup !== '' ? (data.ageGroup as AgeGroup) : undefined,
       });
-      */
-
-      // === Mock 회원가입 시작 (API 연동 전 임시 코드) ===
-      console.log('🚧 Mock 회원가입 실행:', {
-        email: data.email,
-        nickname: data.nickname,
-        gender: data.gender,
-        ageGroup: data.ageGroup,
-      });
-
-      // 임시 대기 (서버 호출 시뮬레이션)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mock 사용자 데이터를 localStorage에 저장
-      const existingUsers = JSON.parse(
-        localStorage.getItem('checkbook_mock_users') || '{}'
-      );
-      existingUsers[data.email] = {
-        email: data.email,
-        nickname: data.nickname,
-        gender: data.gender || undefined,
-        ageGroup: data.ageGroup || undefined,
-        password: data.password, // Mock용으로 비밀번호도 저장 (실제론 절대 이렇게 하면 안됨!)
-      };
-      localStorage.setItem('checkbook_mock_users', JSON.stringify(existingUsers));
-
-      console.log('✅ Mock 회원가입 성공 및 localStorage 저장 완료');
-      // === Mock 회원가입 끝 ===
 
       toast.success('회원가입 성공! 로그인해주세요.');
 
@@ -211,8 +183,8 @@ export const SignupPage: React.FC = () => {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all bg-white"
               >
                 <option value="">선택안함</option>
-                <option value="male">남자</option>
-                <option value="female">여자</option>
+                <option value="MALE">남자</option>
+                <option value="FEMALE">여자</option>
               </select>
             </div>
 
@@ -227,12 +199,12 @@ export const SignupPage: React.FC = () => {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all bg-white"
               >
                 <option value="">선택안함</option>
-                <option value="10대">10대</option>
-                <option value="20대">20대</option>
-                <option value="30대">30대</option>
-                <option value="40대">40대</option>
-                <option value="50대">50대</option>
-                <option value="60대 이상">60대 이상</option>
+                <option value="TEENS">10대</option>
+                <option value="TWENTIES">20대</option>
+                <option value="THIRTIES">30대</option>
+                <option value="FORTIES">40대</option>
+                <option value="FIFTIES">50대</option>
+                <option value="SIXTIES_PLUS">60대 이상</option>
               </select>
             </div>
 

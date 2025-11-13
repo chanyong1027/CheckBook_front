@@ -15,21 +15,21 @@ import { API_PATHS } from '@/utils/constants';
  *
  * @param query - 검색 키워드 (제목, 저자 등)
  * @param page - 페이지 번호 (1부터 시작)
- * @param pageSize - 페이지당 결과 수 (기본 20)
+ * @param size - 페이지당 결과 수 (기본 12)
  * @returns 검색 결과 및 페이지네이션 정보
  *
  * @example
- * const result = await fetchBooks('리액트', 1, 20);
+ * const result = await fetchBooks('리액트', 1, 12);
  * console.log(result.books); // Book[]
- * console.log(result.totalCount); // 전체 결과 수
+ * console.log(result.totalResults); // 전체 결과 수
  */
 export const fetchBooks = async (
   query: string,
   page = 1,
-  pageSize = 20
+  size = 12
 ): Promise<BookSearchResult> => {
   const response = await api.get<BookSearchResult>(API_PATHS.SEARCH_BOOKS, {
-    params: { q: query, page, pageSize },
+    params: { query, page, size },
   });
   return response.data;
 };
@@ -37,42 +37,56 @@ export const fetchBooks = async (
 /**
  * 도서 상세 정보 조회
  *
- * @param id - 도서 ID
+ * @param isbn - 도서 ISBN-13
  * @returns 도서 상세 정보
  *
  * @example
- * const book = await fetchBookDetail('book-123');
+ * const book = await fetchBookDetail('9788937460890');
  * console.log(book.title); // 도서 제목
  */
-export const fetchBookDetail = async (id: string): Promise<Book> => {
-  const response = await api.get<Book>(API_PATHS.BOOK_DETAIL(id));
+export const fetchBookDetail = async (isbn: string): Promise<Book> => {
+  const response = await api.get<Book>(`/api/books/detail/${isbn}`);
   return response.data;
 };
 
 /**
  * 특정 도서의 도서관별 가용성 조회
  *
- * @param bookId - 도서 ID
- * @param libraryIds - 도서관 ID 배열 (선택적, 없으면 내 도서관 기준)
- * @returns 도서관별 가용성 정보 배열
+ * @param isbn - 도서 ISBN-13
+ * @param region - 지역 코드 (예: '11' for 서울)
+ * @returns 도서관별 가용성 정보 배열 (내 도서관 우선 정렬)
  *
  * @example
- * const availability = await fetchBookAvailability('book-123');
+ * const availability = await fetchBookAvailability('9788937460890', '11');
  * availability.forEach(item => {
- *   console.log(`${item.libraryId}: ${item.available ? '대출 가능' : '대출 중'}`);
+ *   console.log(`${item.libraryName}: ${item.available ? '대출 가능' : '대출 중'}`);
  * });
  */
 export const fetchBookAvailability = async (
-  bookId: string,
-  libraryIds?: string[]
+  isbn: string,
+  region: string
 ): Promise<BookLibraryAvailability[]> => {
-  const response = await api.get<BookLibraryAvailability[]>(
-    API_PATHS.BOOK_AVAILABILITY(bookId),
+  const response = await api.get<any[]>(
+    '/api/libraries/book-status',
     {
-      params: libraryIds ? { libraryIds: libraryIds.join(',') } : undefined,
+      params: { isbn, region },
     }
   );
-  return response.data;
+
+  // 백엔드 LibraryBookStatusDto를 프론트엔드 BookLibraryAvailability로 변환
+  return response.data.map((item: any) => ({
+    libraryId: String(item.libId),
+    bookId: isbn,
+    available: item.loanAvailable === true,
+    hasBook: item.hasBook === true,
+    libraryName: item.libName,
+    libraryAddress: item.address,
+    libraryPhone: item.tel,
+    libraryHomepage: item.homepage,
+    latitude: item.latitude,
+    longitude: item.longitude,
+    isFavorite: item.isFavorite === true,
+  }));
 };
 
 /**
@@ -96,38 +110,48 @@ export const fetchRecommendedBooks = async (
 };
 
 /**
- * 인기 도서 목록 조회
+ * 베스트셀러 도서 목록 조회 (알라딘 API 기반)
  *
- * @param period - 기간 ('week' | 'month' | 'year')
- * @param limit - 최대 결과 수 (기본 10)
- * @returns 인기 도서 목록
+ * @returns 베스트셀러 도서 목록
  *
  * @example
- * const popular = await fetchPopularBooks('week', 20);
+ * const bestsellers = await fetchBestsellers();
+ */
+export const fetchBestsellers = async (): Promise<Book[]> => {
+  const response = await api.get<Book[]>('/api/books/bestsellers');
+  return response.data;
+};
+
+/**
+ * 인기 도서 목록 조회
+ * @deprecated Use fetchBestsellers instead
  */
 export const fetchPopularBooks = async (
   period: 'week' | 'month' | 'year' = 'week',
   limit = 10
 ): Promise<Book[]> => {
-  const response = await api.get<Book[]>('/api/books/popular', {
-    params: { period, limit },
-  });
+  // Fallback to bestsellers
+  return fetchBestsellers();
+};
+
+/**
+ * 신간 도서 목록 조회 (알라딘 API 기반)
+ *
+ * @returns 신간 도서 목록
+ *
+ * @example
+ * const newReleases = await fetchNewReleases();
+ */
+export const fetchNewReleases = async (): Promise<Book[]> => {
+  const response = await api.get<Book[]>('/api/books/new-releases');
   return response.data;
 };
 
 /**
  * 신간 도서 목록 조회
- *
- * @param category - 카테고리 (선택적)
- * @param limit - 최대 결과 수 (기본 10)
- * @returns 신간 도서 목록
- *
- * @example
- * const newBooks = await fetchNewBooks('IT', 15);
+ * @deprecated Use fetchNewReleases instead
  */
 export const fetchNewBooks = async (category?: string, limit = 10): Promise<Book[]> => {
-  const response = await api.get<Book[]>('/api/books/new', {
-    params: { category, limit },
-  });
-  return response.data;
+  // Fallback to new releases
+  return fetchNewReleases();
 };

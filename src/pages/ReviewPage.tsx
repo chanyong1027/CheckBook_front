@@ -216,9 +216,9 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, book, onSave, onView
         {/* 책 정보 (왼쪽) */}
         <div className="flex-shrink-0 w-32">
           <div className="aspect-[2/3] rounded-lg overflow-hidden mb-3 cursor-pointer" onClick={onViewDetail}>
-            {book?.coverUrl ? (
+            {(book?.cover || book?.coverUrl) ? (
               <img
-                src={book.coverUrl}
+                src={book.cover ?? book.coverUrl}
                 alt={book.title}
                 className="w-full h-full object-cover hover:scale-105 transition-transform"
               />

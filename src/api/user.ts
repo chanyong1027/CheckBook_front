@@ -28,18 +28,30 @@ import { API_PATHS } from '@/utils/constants';
  *
  * @example
  * const { accessToken, user } = await login({
- *   email: 'user@example.com',
- *   password: 'password123'
+ *   userEmail: 'user@example.com',
+ *   userPw: 'password123'
  * });
  */
 export const login = async (
   credentials: LoginRequest
 ): Promise<{ accessToken: string; refreshToken?: string; user: User }> => {
-  const response = await api.post<{ accessToken: string; refreshToken?: string; user: User }>(
-    '/api/auth/login',
+  const response = await api.post<{ accessToken: string; refreshToken?: string; userId: number; userNm: string; userEmail: string }>(
+    '/api/users/login',
     credentials
   );
-  return response.data;
+
+  // 백엔드 응답을 프론트엔드 User 타입으로 변환
+  return {
+    accessToken: response.data.accessToken,
+    refreshToken: response.data.refreshToken,
+    user: {
+      id: String(response.data.userId),
+      email: response.data.userEmail,
+      nickname: response.data.userNm,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  };
 };
 
 /**
@@ -50,14 +62,25 @@ export const login = async (
  *
  * @example
  * const user = await signup({
- *   email: 'newuser@example.com',
- *   password: 'securepass123',
- *   nickname: '책읽는사람'
+ *   userEmail: 'newuser@example.com',
+ *   userPw: 'securepass123',
+ *   userNm: '책읽는사람'
  * });
  */
 export const signup = async (userData: SignupRequest): Promise<User> => {
-  const response = await api.post<User>('/api/auth/signup', userData);
-  return response.data;
+  const response = await api.post<{ userId: number; userNm: string; userEmail: string }>(
+    '/api/users/register',
+    userData
+  );
+
+  // 백엔드 응답을 프론트엔드 User 타입으로 변환
+  return {
+    id: String(response.data.userId),
+    email: response.data.userEmail,
+    nickname: response.data.userNm,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 };
 
 /**
@@ -67,7 +90,7 @@ export const signup = async (userData: SignupRequest): Promise<User> => {
  * await logout();
  */
 export const logout = async (): Promise<void> => {
-  await api.post('/api/auth/logout');
+  await api.post('/api/users/logout');
 };
 
 /**
@@ -82,9 +105,10 @@ export const logout = async (): Promise<void> => {
 export const refreshToken = async (
   refreshToken: string
 ): Promise<{ accessToken: string }> => {
-  const response = await api.post<{ accessToken: string }>('/api/auth/refresh', {
-    refreshToken,
-  });
+  const response = await api.post<{ accessToken: string; refreshToken: string }>(
+    '/api/users/refresh',
+    { refreshToken }
+  );
   return response.data;
 };
 
@@ -131,6 +155,30 @@ export const deleteAccount = async (): Promise<void> => {
 // ==================== 독서 상태 API ====================
 
 /**
+ * 프론트엔드 ReadingState를 백엔드 ReadStatus로 변환
+ */
+const mapToBackendStatus = (state: ReadingState): string => {
+  const mapping = {
+    WISHLIST: 'Wish',
+    READING: 'Reading',
+    READ: 'Completed',
+  };
+  return mapping[state] || state;
+};
+
+/**
+ * 백엔드 ReadStatus를 프론트엔드 ReadingState로 변환
+ */
+const mapToFrontendState = (status: string): ReadingState => {
+  const mapping: Record<string, ReadingState> = {
+    Wish: 'WISHLIST',
+    Reading: 'READING',
+    Completed: 'READ',
+  };
+  return mapping[status] || ('WISHLIST' as ReadingState);
+};
+
+/**
  * 사용자의 모든 독서 상태 조회
  *
  * @param state - 필터링할 상태 (선택적)
@@ -147,28 +195,60 @@ export const deleteAccount = async (): Promise<void> => {
 export const fetchUserBookStates = async (
   state?: ReadingState
 ): Promise<UserBookState[]> => {
-  const response = await api.get<UserBookState[]>('/api/me/books', {
-    params: state ? { state } : undefined,
+  const backendStatus = state ? mapToBackendStatus(state) : undefined;
+  const response = await api.get<any[]>(API_PATHS.USER_BOOK_RECORDS, {
+    params: backendStatus ? { status: backendStatus } : undefined,
   });
-  return response.data;
+
+  // 백엔드 BookRecordResponseDto를 프론트엔드 UserBookState로 변환
+  return response.data.map((item: any) => ({
+    bookId: item.book?.isbn13 || item.book?.isbn || '',
+    state: mapToFrontendState(item.readStatus),
+    rating: item.rating,
+    comment: item.review,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    // 추가 책 정보
+    bookTitle: item.book?.title,
+    bookAuthor: item.book?.author,
+    bookCover: item.book?.cover,
+  }));
 };
 
 /**
  * 특정 도서의 독서 상태 조회
  *
- * @param bookId - 도서 ID
+ * @param isbn - 도서 ISBN-13
  * @returns 해당 도서의 독서 상태 (없으면 null)
  *
  * @example
- * const state = await fetchUserBookState('book-123');
+ * const state = await fetchUserBookState('9788937460890');
  * if (state) {
  *   console.log(`상태: ${state.state}, 별점: ${state.rating}`);
  * }
  */
-export const fetchUserBookState = async (bookId: string): Promise<UserBookState | null> => {
+export const fetchUserBookState = async (isbn: string): Promise<UserBookState | null> => {
   try {
-    const response = await api.get<UserBookState>(API_PATHS.USER_BOOK_STATE(bookId));
-    return response.data;
+    const response = await api.get<any>(API_PATHS.USER_BOOK_STATE(isbn));
+
+    // 백엔드 BookRecordResponseDto를 프론트엔드 UserBookState로 변환
+    return {
+      bookId: response.data.book?.isbn13 || response.data.book?.isbn || isbn,
+      state: mapToFrontendState(response.data.readStatus),
+      rating: response.data.rating,
+      comment: response.data.review,
+      startDate: response.data.startDate,
+      endDate: response.data.endDate,
+      createdAt: response.data.createdAt,
+      updatedAt: response.data.updatedAt,
+      // 추가 정보
+      recordId: response.data.id, // 수정/삭제 시 필요
+      bookTitle: response.data.book?.title,
+      bookAuthor: response.data.book?.author,
+      bookCover: response.data.book?.cover,
+    };
   } catch (error: any) {
     // 404는 상태가 없는 것으로 처리
     if (error.status === 404) {
@@ -179,38 +259,81 @@ export const fetchUserBookState = async (bookId: string): Promise<UserBookState 
 };
 
 /**
- * 독서 상태 생성/수정
+ * 독서 상태 생성 (책을 서재에 추가)
  *
- * @param bookId - 도서 ID
- * @param stateData - 독서 상태 정보
+ * @param isbn - 도서 ISBN-13
+ * @returns 생성된 독서 상태
+ *
+ * @example
+ * const state = await createUserBookState('9788937460890');
+ */
+export const createUserBookState = async (isbn: string): Promise<UserBookState> => {
+  const response = await api.post<any>(API_PATHS.CREATE_BOOK_RECORD, {
+    isbn,
+  });
+
+  // 백엔드 BookRecordResponseDto를 프론트엔드 UserBookState로 변환
+  return {
+    bookId: response.data.book?.isbn13 || response.data.book?.isbn || isbn,
+    state: mapToFrontendState(response.data.readStatus),
+    rating: response.data.rating,
+    comment: response.data.review,
+    startDate: response.data.startDate,
+    endDate: response.data.endDate,
+    createdAt: response.data.createdAt,
+    updatedAt: response.data.updatedAt,
+    recordId: response.data.id,
+    bookTitle: response.data.book?.title,
+    bookAuthor: response.data.book?.author,
+    bookCover: response.data.book?.cover,
+  };
+};
+
+/**
+ * 독서 상태 수정 (상태만 변경)
+ *
+ * @param recordId - 기록 ID
+ * @param state - 새로운 독서 상태
  * @returns 업데이트된 독서 상태
  *
  * @example
- * const state = await updateUserBookState('book-123', {
- *   state: 'READ',
- *   rating: 5,
- *   comment: '정말 재미있게 읽었습니다!',
- *   endDate: new Date().toISOString()
- * });
+ * const state = await updateUserBookState(123, 'READ');
  */
 export const updateUserBookState = async (
-  bookId: string,
-  stateData: Partial<Omit<UserBookState, 'bookId'>>
+  recordId: number,
+  state: ReadingState
 ): Promise<UserBookState> => {
-  const response = await api.put<UserBookState>(API_PATHS.USER_BOOK_STATE(bookId), stateData);
-  return response.data;
+  const response = await api.patch<any>(API_PATHS.UPDATE_BOOK_RECORD(recordId), {
+    readStatus: mapToBackendStatus(state),
+  });
+
+  // 백엔드 BookRecordResponseDto를 프론트엔드 UserBookState로 변환
+  return {
+    bookId: response.data.book?.isbn13 || response.data.book?.isbn || '',
+    state: mapToFrontendState(response.data.readStatus),
+    rating: response.data.rating,
+    comment: response.data.review,
+    startDate: response.data.startDate,
+    endDate: response.data.endDate,
+    createdAt: response.data.createdAt,
+    updatedAt: response.data.updatedAt,
+    recordId: response.data.id,
+    bookTitle: response.data.book?.title,
+    bookAuthor: response.data.book?.author,
+    bookCover: response.data.book?.cover,
+  };
 };
 
 /**
  * 독서 상태 삭제
  *
- * @param bookId - 도서 ID
+ * @param recordId - 기록 ID
  *
  * @example
- * await deleteUserBookState('book-123');
+ * await deleteUserBookState(123);
  */
-export const deleteUserBookState = async (bookId: string): Promise<void> => {
-  await api.delete(API_PATHS.USER_BOOK_STATE(bookId));
+export const deleteUserBookState = async (recordId: number): Promise<void> => {
+  await api.delete(API_PATHS.DELETE_BOOK_RECORD(recordId));
 };
 
 // ==================== 독서 통계 API ====================

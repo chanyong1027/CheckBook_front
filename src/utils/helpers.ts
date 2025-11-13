@@ -100,3 +100,93 @@ export const isDefined = <T>(value: T | null | undefined): value is T => {
 export const clamp = (value: number, min: number, max: number): number => {
   return Math.min(Math.max(value, min), max);
 };
+
+/**
+ * Gender enum 값을 한글로 변환
+ *
+ * @param gender - Gender enum 값 (MALE, FEMALE)
+ * @returns 한글 성별 문자열
+ *
+ * @example
+ * getGenderDisplayName('MALE') // '남자'
+ * getGenderDisplayName('FEMALE') // '여자'
+ */
+export const getGenderDisplayName = (gender?: string): string => {
+  switch (gender) {
+    case 'MALE':
+      return '남자';
+    case 'FEMALE':
+      return '여자';
+    default:
+      return '-';
+  }
+};
+
+/**
+ * AgeGroup enum 값을 한글로 변환
+ *
+ * @param ageGroup - AgeGroup enum 값 (TEENS, TWENTIES, etc.)
+ * @returns 한글 연령대 문자열
+ *
+ * @example
+ * getAgeGroupDisplayName('TWENTIES') // '20대'
+ * getAgeGroupDisplayName('SIXTIES_PLUS') // '60대 이상'
+ */
+export const getAgeGroupDisplayName = (ageGroup?: string): string => {
+  switch (ageGroup) {
+    case 'TEENS':
+      return '10대';
+    case 'TWENTIES':
+      return '20대';
+    case 'THIRTIES':
+      return '30대';
+    case 'FORTIES':
+      return '40대';
+    case 'FIFTIES':
+      return '50대';
+    case 'SIXTIES_PLUS':
+      return '60대 이상';
+    default:
+      return '-';
+  }
+};
+
+/**
+ * 두 지점 간의 거리 계산 (Haversine formula)
+ *
+ * @param lat1 - 지점 1 위도
+ * @param lon1 - 지점 1 경도
+ * @param lat2 - 지점 2 위도
+ * @param lon2 - 지점 2 경도
+ * @returns 거리 (km)
+ *
+ * @example
+ * const distance = calculateDistance(37.5665, 126.9780, 37.5651, 126.9895);
+ * console.log(`거리: ${distance.toFixed(2)}km`);
+ */
+export const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371; // 지구 반지름 (km)
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+
+  return distance;
+};
+
+/**
+ * 각도를 라디안으로 변환
+ */
+const toRad = (value: number): number => {
+  return (value * Math.PI) / 180;
+};

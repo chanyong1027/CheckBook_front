@@ -41,14 +41,17 @@ export const BookCard: React.FC<BookCardProps> = ({
   className = '',
   showAvailability = true,
 }) => {
+  // id 또는 isbn13 사용 (백엔드 연동 시 isbn13 사용)
+  const bookId = book.id ?? book.isbn13;
+
   const handleClick = () => {
-    onClick?.(book.id);
+    onClick?.(bookId);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onClick?.(book.id);
+      onClick?.(bookId);
     }
   };
 
@@ -70,7 +73,7 @@ export const BookCard: React.FC<BookCardProps> = ({
       {/* 도서 썸네일 */}
       <div className="flex-shrink-0">
         <img
-          src={book.coverUrl ?? '/placeholder-book.png'}
+          src={book.cover ?? book.coverUrl ?? '/placeholder-book.png'}
           alt={`${book.title} 표지`}
           className="w-24 h-36 object-cover rounded-md shadow-sm"
           onError={(e) => {

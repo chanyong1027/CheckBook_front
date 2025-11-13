@@ -6,9 +6,9 @@
  * - 위치 기반 검색 지원
  */
 
-import { api } from './index';
-import { Library, LibrarySearchFilter, Region } from '@/types/library';
-import { API_PATHS } from '@/utils/constants';
+import { api } from "./index";
+import { Library, LibrarySearchFilter, Region } from "@/types/library";
+import { API_PATHS } from "@/utils/constants";
 
 /**
  * 도서관 검색
@@ -28,8 +28,10 @@ import { API_PATHS } from '@/utils/constants';
  *   radiusKm: 5
  * });
  */
-export const fetchLibraries = async (filter: LibrarySearchFilter = {}): Promise<Library[]> => {
-  const response = await api.get<Library[]>('/api/libraries/search', {
+export const fetchLibraries = async (
+  filter: LibrarySearchFilter = {}
+): Promise<Library[]> => {
+  const response = await api.get<Library[]>("/api/libraries/search", {
     params: {
       keyword: filter.keyword,
       regionCode: filter.regionCode,
@@ -67,40 +69,52 @@ export const fetchLibraryDetail = async (id: string): Promise<Library> => {
  * console.log(`등록된 도서관: ${myLibraries.length}개`);
  */
 export const fetchUserLibraries = async (): Promise<Library[]> => {
-  const response = await api.get<Library[]>(API_PATHS.USER_LIBRARIES);
-  return response.data;
+  const response = await api.get<any[]>(API_PATHS.USER_LIBRARIES);
+
+  // 백엔드 필드명(libName, tel)을 프론트엔드 필드명(name, phone)으로 변환
+  return response.data.map((item: any) => ({
+    id: String(item.id),
+    name: item.libName,
+    address: item.address,
+    phone: item.tel,
+    homepage: item.homepage,
+    latitude: item.latitude,
+    longitude: item.longitude,
+  }));
 };
 
 /**
  * 내 도서관 추가
  *
  * @param libraryId - 추가할 도서관 ID
- * @returns 업데이트된 도서관 목록
+ * @returns void (백엔드에서 빈 응답 반환)
  *
  * @throws {AppError} 최대 3개 제한 초과 시
  *
  * @example
- * const updated = await addUserLibrary('lib-456');
+ * await addUserLibrary('lib-456');
  */
-export const addUserLibrary = async (libraryId: string): Promise<Library[]> => {
-  const response = await api.post<Library[]>(API_PATHS.USER_LIBRARIES, {
-    libraryId,
-  });
-  return response.data;
+export const addUserLibrary = async (libraryId: string): Promise<void> => {
+  await api.post<void>(
+    `/api/libraries/${libraryId}/my-library`
+  );
 };
 
 /**
  * 내 도서관 제거
  *
  * @param libraryId - 제거할 도서관 ID
- * @returns 업데이트된 도서관 목록
+ * @returns void (백엔드에서 빈 응답 반환)
  *
  * @example
- * const updated = await removeUserLibrary('lib-456');
+ * await removeUserLibrary('lib-456');
  */
-export const removeUserLibrary = async (libraryId: string): Promise<Library[]> => {
-  const response = await api.delete<Library[]>(`${API_PATHS.USER_LIBRARIES}/${libraryId}`);
-  return response.data;
+export const removeUserLibrary = async (
+  libraryId: string
+): Promise<void> => {
+  await api.delete<void>(
+    `/api/libraries/${libraryId}/my-library`
+  );
 };
 
 /**
@@ -112,7 +126,9 @@ export const removeUserLibrary = async (libraryId: string): Promise<Library[]> =
  * @example
  * const reordered = await reorderUserLibraries(['lib-3', 'lib-1', 'lib-2']);
  */
-export const reorderUserLibraries = async (libraryIds: string[]): Promise<Library[]> => {
+export const reorderUserLibraries = async (
+  libraryIds: string[]
+): Promise<Library[]> => {
   const response = await api.put<Library[]>(API_PATHS.USER_LIBRARIES, {
     libraryIds,
   });
@@ -129,7 +145,7 @@ export const reorderUserLibraries = async (libraryIds: string[]): Promise<Librar
  * // [{ code: '11', name: '서울특별시' }, ...]
  */
 export const fetchRegions = async (): Promise<Region[]> => {
-  const response = await api.get<Region[]>('/api/regions');
+  const response = await api.get<Region[]>("/api/regions");
   return response.data;
 };
 
@@ -144,7 +160,9 @@ export const fetchRegions = async (): Promise<Region[]> => {
  * // [{ code: '11010', name: '종로구', parentCode: '11' }, ...]
  */
 export const fetchDistricts = async (regionCode: string): Promise<Region[]> => {
-  const response = await api.get<Region[]>(`/api/regions/${regionCode}/districts`);
+  const response = await api.get<Region[]>(
+    `/api/regions/${regionCode}/districts`
+  );
   return response.data;
 };
 
@@ -167,8 +185,59 @@ export const fetchNearbyLibraries = async (
   longitude: number,
   radiusKm = 5
 ): Promise<Library[]> => {
-  const response = await api.get<Library[]>('/api/libraries/nearby', {
+  const response = await api.get<Library[]>("/api/libraries/nearby", {
     params: { latitude, longitude, radius: radiusKm },
   });
   return response.data;
+};
+
+/**
+ * 지역별 도서관 검색 (정보나루 API 연동)
+ *
+ * @param region - 시/도 (예: '서울', '경기')
+ * @param dtlRegion - 시/군/구 (예: '강남구', '수원시')
+ * @param libraryName - 도서관 이름 (선택적, 검색 후 필터링용)
+ * @param pageNo - 페이지 번호 (기본 1)
+ * @param pageSize - 페이지 크기 (기본 100)
+ * @returns 도서관 목록
+ *
+ * @example
+ * const libraries = await searchLibrariesByRegion('서울', '강남구');
+ */
+export const searchLibrariesByRegion = async (
+  region: string,
+  dtlRegion: string,
+  libraryName?: string,
+  pageNo = 1,
+  pageSize = 100
+): Promise<Library[]> => {
+  const response = await api.get<any>("/api/libraries/search-from-api", {
+    params: { region, dtl_region: dtlRegion, pageNo, pageSize },
+  });
+
+  // 정보나루 API 응답 구조 파싱
+  const libs = response.data?.response?.libs || [];
+
+  let libraries: Library[] = libs.map((item: any) => {
+    const lib = item.lib;
+    return {
+      id: String(lib.libCode),
+      name: lib.libName,
+      address: lib.address,
+      phone: lib.tel,
+      homepage: lib.homepage,
+      latitude: lib.latitude ? parseFloat(lib.latitude) : undefined,
+      longitude: lib.longitude ? parseFloat(lib.longitude) : undefined,
+    };
+  });
+
+  // 도서관 이름으로 필터링 (선택적)
+  if (libraryName && libraryName.trim()) {
+    const query = libraryName.trim().toLowerCase();
+    libraries = libraries.filter((lib) =>
+      lib.name.toLowerCase().includes(query)
+    );
+  }
+
+  return libraries;
 };

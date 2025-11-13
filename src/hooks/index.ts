@@ -46,3 +46,6 @@ export {
   useReadingBooks,
   useReadBooks,
 } from './useUserBookState';
+
+// ==================== 위치 정보 ====================
+export { useGeolocation } from './useGeolocation';

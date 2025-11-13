@@ -281,9 +281,9 @@ function MyPage() {
                       >
                         {/* 표지 이미지 */}
                         <div className="aspect-[2/3] bg-gray-100 rounded-lg mb-2 group-hover:shadow-lg transition overflow-hidden">
-                          {book?.coverUrl ? (
+                          {(book?.cover || book?.coverUrl) ? (
                             <img
-                              src={book.coverUrl}
+                              src={book.cover ?? book.coverUrl}
                               alt={book.title}
                               className="w-full h-full object-cover"
                               onError={(e) => {
