@@ -8,21 +8,31 @@
  * - 페이지네이션 (10개씩)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBookStateStore } from '@/store/useBookStateStore';
-import { findBookById } from '@/utils/mockData';
+import { toast } from 'react-toastify';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserBookStates } from '@/hooks/useUserBookState';
+import { updateBookReview } from '@/api/user';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import type { UserBookState } from '@/types/user';
 
 export const ReviewPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'READING' | 'READ'>('READ');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // userBookStates 전체 구독
-  const allBookStates = useBookStateStore((state) => state.userBookStates);
-  const { setBookState } = useBookStateStore();
+  // 인증 체크
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, navigate]);
+
+  // 백엔드에서 독서 기록 가져오기
+  const { bookStates: allBookStates, isLoading, refetch } = useUserBookStates();
 
   // 상태별 필터링
   const readingBooks = useMemo(
@@ -50,14 +60,34 @@ export const ReviewPage = () => {
     setCurrentPage(1);
   };
 
-  // 리뷰 저장
-  const handleSaveReview = (bookState: UserBookState, newComment: string) => {
-    setBookState({
-      ...bookState,
-      comment: newComment,
-      updatedAt: new Date().toISOString(),
-    });
+  // 리뷰 저장 (백엔드 연동)
+  const handleSaveReview = async (bookState: UserBookState, newComment: string, rating?: number) => {
+    if (!bookState.recordId) {
+      toast.error('리뷰를 저장할 수 없습니다. recordId가 없습니다.');
+      return;
+    }
+
+    try {
+      await updateBookReview(bookState.recordId, newComment, rating);
+      toast.success('리뷰가 저장되었습니다!');
+      // 데이터 다시 가져오기
+      refetch();
+    } catch (error) {
+      console.error('Failed to save review:', error);
+      toast.error('리뷰 저장에 실패했습니다.');
+    }
   };
+
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-5xl mx-auto px-4">
+          <LoadingSpinner size="lg" label="리뷰 목록을 불러오는 중..." />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -120,12 +150,10 @@ export const ReviewPage = () => {
         ) : (
           <div className="space-y-4">
             {paginatedBooks.map((bookState) => {
-              const book = findBookById(bookState.bookId);
               return (
                 <ReviewCard
                   key={bookState.bookId}
                   bookState={bookState}
-                  book={book}
                   onSave={handleSaveReview}
                   onViewDetail={() => navigate(`/book/${bookState.bookId}`)}
                 />
@@ -191,22 +219,29 @@ export const ReviewPage = () => {
  */
 interface ReviewCardProps {
   bookState: UserBookState;
-  book: any;
-  onSave: (bookState: UserBookState, comment: string) => void;
+  onSave: (bookState: UserBookState, comment: string, rating?: number) => void;
   onViewDetail: () => void;
 }
 
-const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, book, onSave, onViewDetail }) => {
+const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, onSave, onViewDetail }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [comment, setComment] = useState(bookState.comment || '');
+  const [rating, setRating] = useState(bookState.rating || 0);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    onSave(bookState, comment);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(bookState, comment, rating);
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setComment(bookState.comment || '');
+    setRating(bookState.rating || 0);
     setIsEditing(false);
   };
 
@@ -216,10 +251,10 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, book, onSave, onView
         {/* 책 정보 (왼쪽) */}
         <div className="flex-shrink-0 w-32">
           <div className="aspect-[2/3] rounded-lg overflow-hidden mb-3 cursor-pointer" onClick={onViewDetail}>
-            {(book?.cover || book?.coverUrl) ? (
+            {bookState.bookCover ? (
               <img
-                src={book.cover ?? book.coverUrl}
-                alt={book.title}
+                src={bookState.bookCover}
+                alt={bookState.bookTitle || '책 표지'}
                 className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             ) : (
@@ -232,9 +267,9 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, book, onSave, onView
             className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1 cursor-pointer hover:text-primary"
             onClick={onViewDetail}
           >
-            {book?.title || `도서 #${bookState.bookId}`}
+            {bookState.bookTitle || `도서 #${bookState.bookId}`}
           </h3>
-          <p className="text-xs text-gray-500">{book?.author || '저자 미상'}</p>
+          <p className="text-xs text-gray-500">{bookState.bookAuthor || '저자 미상'}</p>
 
           {/* 별점 */}
           {bookState.rating && (
@@ -268,6 +303,26 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, book, onSave, onView
 
           {isEditing ? (
             <div>
+              {/* 별점 선택 */}
+              <div className="mb-3">
+                <label className="text-sm font-medium text-gray-700 mb-2 block">평점</label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="text-2xl focus:outline-none hover:scale-110 transition-transform"
+                    >
+                      <span className={star <= rating ? 'text-yellow-400' : 'text-gray-300'}>
+                        ★
+                      </span>
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm text-gray-600">{rating > 0 ? `${rating}.0` : '선택 안 함'}</span>
+                </div>
+              </div>
+
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
@@ -284,15 +339,17 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, book, onSave, onView
                 <div className="flex gap-2">
                   <button
                     onClick={handleCancel}
-                    className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                    disabled={isSaving}
+                    className="px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-white hover:opacity-90 transition-all"
+                    disabled={isSaving}
+                    className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-white hover:opacity-90 transition-all disabled:opacity-50"
                   >
-                    저장
+                    {isSaving ? '저장 중...' : '저장'}
                   </button>
                 </div>
               </div>

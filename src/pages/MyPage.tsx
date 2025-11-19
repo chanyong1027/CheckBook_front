@@ -8,11 +8,11 @@
  * - 탭 스타일 변경 (노란색 강조)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { useBookStateStore } from '@/store/useBookStateStore';
-import { findBookById } from '@/utils/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserBookStates } from '@/hooks/useUserBookState';
 import { cn } from '@/utils/helpers';
 import type { ReadingState, UserBookState } from '@/types/user';
 
@@ -21,10 +21,18 @@ const COLORS = ['#F7B731', '#FF8C42', '#D1D5DB', '#E5E7EB', '#9CA3AF', '#6B7280'
 
 function MyPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<ReadingState>('READ');
 
-  // userBookStates 전체를 구독 (한 번만)
-  const allBookStates = useBookStateStore((state) => state.userBookStates);
+  // 인증 체크
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  // 백엔드에서 모든 독서 기록 가져오기
+  const { bookStates: allBookStates, isLoading: isLoadingBooks } = useUserBookStates();
 
   // 상태별로 필터링 (useMemo로 메모이제이션)
   const wishlistBooks = useMemo(
@@ -51,12 +59,13 @@ function MyPage() {
   );
 
   // 장르별 통계 계산 (완독한 책 기준)
+  // TODO: 백엔드에서 카테고리 정보 제공 시 업데이트 필요
   const genreData = useMemo(() => {
     const genreCounts: Record<string, number> = {};
 
     readBooks.forEach((bookState) => {
-      const book = findBookById(bookState.bookId);
-      const category = book?.category || '기타';
+      // 백엔드에서 카테고리 정보를 제공하지 않으므로 기타로 분류
+      const category = '기타';
       genreCounts[category] = (genreCounts[category] || 0) + 1;
     });
 
@@ -126,14 +135,7 @@ function MyPage() {
         const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
         return dateB - dateA;
       })
-      .slice(0, 3)
-      .map((bookState) => {
-        const book = findBookById(bookState.bookId);
-        return {
-          bookState,
-          book,
-        };
-      });
+      .slice(0, 3);
   }, [readBooks, readingBooks]);
 
   // 평균 별점 계산
@@ -272,7 +274,6 @@ function MyPage() {
               ) : (
                 <div className="grid grid-cols-4 gap-4">
                   {currentBooks.map((bookState: UserBookState) => {
-                    const book = findBookById(bookState.bookId);
                     return (
                       <div
                         key={bookState.bookId}
@@ -281,10 +282,10 @@ function MyPage() {
                       >
                         {/* 표지 이미지 */}
                         <div className="aspect-[2/3] bg-gray-100 rounded-lg mb-2 group-hover:shadow-lg transition overflow-hidden">
-                          {(book?.cover || book?.coverUrl) ? (
+                          {bookState.bookCover ? (
                             <img
-                              src={book.cover ?? book.coverUrl}
-                              alt={book.title}
+                              src={bookState.bookCover}
+                              alt={bookState.bookTitle || '책 표지'}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
@@ -300,9 +301,9 @@ function MyPage() {
                         </div>
                         {/* 도서 정보 */}
                         <h3 className="text-sm font-medium line-clamp-2">
-                          {book?.title || `도서 #${bookState.bookId}`}
+                          {bookState.bookTitle || `도서 #${bookState.bookId}`}
                         </h3>
-                        <p className="text-xs text-gray-500">{book?.author || '저자 미상'}</p>
+                        <p className="text-xs text-gray-500">{bookState.bookAuthor || '저자 미상'}</p>
                         {/* 별점 표시 */}
                         {bookState.rating && (
                           <div className="flex items-center gap-1 mt-1">
@@ -344,7 +345,7 @@ function MyPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {recentMemos.map(({ bookState, book }) => (
+                  {recentMemos.map((bookState) => (
                     <div
                       key={bookState.bookId}
                       className="border-b border-gray-100 last:border-0 pb-4 last:pb-0 cursor-pointer hover:bg-gray-50 p-2 rounded transition"
@@ -364,7 +365,7 @@ function MyPage() {
                       </p>
                       {/* 도서명 */}
                       <p className="text-xs text-gray-400">
-                        {book?.title || `도서 #${bookState.bookId}`}
+                        {bookState.bookTitle || `도서 #${bookState.bookId}`}
                       </p>
                       {/* 날짜 */}
                       {bookState.updatedAt && (

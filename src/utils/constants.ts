@@ -33,6 +33,7 @@ export const API_PATHS = {
   USER_BOOK_RECORDS: '/api/records/my',
   CREATE_BOOK_RECORD: '/api/records',
   UPDATE_BOOK_RECORD: (recordId: number) => `/api/records/${recordId}`,
+  UPDATE_BOOK_REVIEW: (recordId: number) => `/api/records/${recordId}/review`,
   DELETE_BOOK_RECORD: (recordId: number) => `/api/records/${recordId}`,
 } as const;
 

@@ -175,7 +175,12 @@ const mapToFrontendState = (status: string): ReadingState => {
     Reading: 'READING',
     Completed: 'READ',
   };
-  return mapping[status] || ('WISHLIST' as ReadingState);
+
+  if (!status || !mapping[status]) {
+    throw new Error(`Unknown reading status: ${status}`);
+  }
+
+  return mapping[status];
 };
 
 /**
@@ -210,10 +215,11 @@ export const fetchUserBookStates = async (
     endDate: item.endDate,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    recordId: item.id, // 리뷰 수정/삭제 시 필요
     // 추가 책 정보
     bookTitle: item.book?.title,
     bookAuthor: item.book?.author,
-    bookCover: item.book?.cover,
+    bookCover: item.book?.bookImg, // 백엔드 필드명: bookImg
   }));
 };
 
@@ -232,6 +238,11 @@ export const fetchUserBookStates = async (
 export const fetchUserBookState = async (isbn: string): Promise<UserBookState | null> => {
   try {
     const response = await api.get<any>(API_PATHS.USER_BOOK_STATE(isbn));
+
+    // readStatus가 없으면 null 반환 (데이터 없음)
+    if (!response.data || !response.data.readStatus) {
+      return null;
+    }
 
     // 백엔드 BookRecordResponseDto를 프론트엔드 UserBookState로 변환
     return {
@@ -290,21 +301,65 @@ export const createUserBookState = async (isbn: string): Promise<UserBookState> 
 };
 
 /**
- * 독서 상태 수정 (상태만 변경)
+ * 독서 상태 수정 (상태 및 날짜 변경)
  *
  * @param recordId - 기록 ID
  * @param state - 새로운 독서 상태
+ * @param startDate - 시작 날짜 (선택적)
+ * @param endDate - 종료 날짜 (선택적)
  * @returns 업데이트된 독서 상태
  *
  * @example
- * const state = await updateUserBookState(123, 'READ');
+ * const state = await updateUserBookState(123, 'READ', '2024-01-01', '2024-01-15');
  */
 export const updateUserBookState = async (
   recordId: number,
-  state: ReadingState
+  state: ReadingState,
+  startDate?: string,
+  endDate?: string
 ): Promise<UserBookState> => {
   const response = await api.patch<any>(API_PATHS.UPDATE_BOOK_RECORD(recordId), {
     readStatus: mapToBackendStatus(state),
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+  });
+
+  // 백엔드 BookRecordResponseDto를 프론트엔드 UserBookState로 변환
+  return {
+    bookId: response.data.book?.isbn13 || response.data.book?.isbn || '',
+    state: mapToFrontendState(response.data.readStatus),
+    rating: response.data.rating,
+    comment: response.data.review,
+    startDate: response.data.startDate,
+    endDate: response.data.endDate,
+    createdAt: response.data.createdAt,
+    updatedAt: response.data.updatedAt,
+    recordId: response.data.id,
+    bookTitle: response.data.book?.title,
+    bookAuthor: response.data.book?.author,
+    bookCover: response.data.book?.cover,
+  };
+};
+
+/**
+ * 독서 기록의 리뷰 및 평점 업데이트
+ *
+ * @param recordId - 기록 ID
+ * @param review - 리뷰 내용
+ * @param rating - 평점 (0-5)
+ * @returns 업데이트된 독서 상태
+ *
+ * @example
+ * const state = await updateBookReview(123, '정말 재미있게 읽었습니다!', 5);
+ */
+export const updateBookReview = async (
+  recordId: number,
+  review?: string,
+  rating?: number
+): Promise<UserBookState> => {
+  const response = await api.put<any>(API_PATHS.UPDATE_BOOK_REVIEW(recordId), {
+    review,
+    rating,
   });
 
   // 백엔드 BookRecordResponseDto를 프론트엔드 UserBookState로 변환

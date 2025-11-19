@@ -190,3 +190,23 @@ export const calculateDistance = (
 const toRad = (value: number): number => {
   return (value * Math.PI) / 180;
 };
+
+/**
+ * 카카오맵 링크 URL 생성
+ *
+ * @param name - 장소 이름
+ * @param latitude - 위도
+ * @param longitude - 경도
+ * @returns 카카오맵 링크 URL (외부 링크)
+ *
+ * @example
+ * const mapUrl = generateKakaoMapUrl('국립중앙도서관', 37.5208, 127.0361);
+ * window.open(mapUrl, '_blank');
+ */
+export const generateKakaoMapUrl = (
+  name: string,
+  latitude: number,
+  longitude: number
+): string => {
+  return `https://map.kakao.com/link/map/${encodeURIComponent(name)},${latitude},${longitude}`;
+};

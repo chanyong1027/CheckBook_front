@@ -171,12 +171,29 @@ export const useUserBookState = (bookId: string | undefined) => {
       if (existing && existing.recordId) {
         // 수정: recordId가 있으면 PATCH 요청
         if (stateData.state) {
-          return updateUserBookState(existing.recordId, stateData.state);
+          return updateUserBookState(
+            existing.recordId,
+            stateData.state,
+            stateData.startDate,
+            stateData.endDate
+          );
         }
         throw new Error('State is required for update');
       } else {
-        // 생성: POST 요청 (기본 상태는 Wish)
-        return createUserBookState(bookId);
+        // 생성: POST 요청 (기본 상태는 Wish로 생성됨)
+        const created = await createUserBookState(bookId);
+
+        // 원하는 상태가 WISHLIST가 아니면 즉시 상태 변경
+        if (stateData.state && stateData.state !== 'WISHLIST') {
+          return updateUserBookState(
+            created.recordId!,
+            stateData.state,
+            stateData.startDate,
+            stateData.endDate
+          );
+        }
+
+        return created;
       }
     },
 
@@ -207,6 +224,24 @@ export const useUserBookState = (bookId: string | undefined) => {
       return { previousState };
     },
 
+    // 성공 시 서버 데이터로 업데이트 (recordId 포함)
+    onSuccess: (data) => {
+      if (bookId && data) {
+        // 서버에서 받은 실제 데이터로 업데이트 (recordId 포함)
+        queryClient.setQueryData([QUERY_KEYS.USER_BOOK_STATE, bookId], data);
+        setBookStateInStore(data);
+        // 목록 쿼리만 무효화 (개별 bookId 쿼리는 제외)
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.USER_BOOK_STATE],
+          predicate: (query) => {
+            // bookId가 포함된 쿼리는 무효화하지 않음 (이미 업데이트됨)
+            const queryKey = query.queryKey;
+            return queryKey.length === 1 || (queryKey.length > 1 && queryKey[1] !== bookId);
+          }
+        });
+      }
+    },
+
     // 에러 발생 시 롤백
     onError: (_error, _variables, context) => {
       if (context?.previousState && bookId) {
@@ -218,24 +253,16 @@ export const useUserBookState = (bookId: string | undefined) => {
         }
       }
     },
-
-    // 성공 또는 실패 후 서버 데이터 다시 가져오기
-    onSettled: () => {
-      if (bookId) {
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_BOOK_STATE, bookId] });
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_BOOK_STATE] });
-      }
-    },
   });
 
   // 상태 삭제 뮤테이션
-  const removeMutation = useMutation<void, Error, void, { previousState?: UserBookState | null }>({
-    mutationFn: () => {
-      const existing = bookState || localState;
-      if (!existing || !existing.recordId) {
+  const removeMutation = useMutation<void, Error, number | undefined, { previousState?: UserBookState | null }>({
+    mutationFn: (targetId?: number) => {
+      const idToDelete = targetId || bookState?.recordId || localState?.recordId;
+      if (!idToDelete) {
         throw new Error('Record ID is required for deletion');
       }
-      return deleteUserBookState(existing.recordId);
+      return deleteUserBookState(idToDelete);
     },
 
     // 낙관적 업데이트
@@ -311,7 +338,7 @@ export const useUserBookState = (bookId: string | undefined) => {
     /**
      * 독서 상태 제거
      */
-    removeState: () => removeMutation.mutateAsync(),
+    removeState: (recordId?: number) => removeMutation.mutateAsync(recordId),
 
     /** 업데이트 중 여부 */
     isUpdating: updateMutation.isPending,

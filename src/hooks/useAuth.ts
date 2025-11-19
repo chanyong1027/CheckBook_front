@@ -15,6 +15,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { login, signup } from '@/api/user';
 import { setAuthToken, removeAuthToken, getAuthToken } from '@/api/index';
 import { QUERY_KEYS } from '@/utils/constants';
+import { useBookStateStore } from '@/store/useBookStateStore';
+import { useLibraryStore } from '@/store/useLibraryStore';
 import type { User, LoginRequest, SignupRequest } from '@/types/user';
 
 /**
@@ -90,7 +92,12 @@ export const useAuth = () => {
   // localStorage에서 초기 사용자 정보 읽기
   const [user, setUser] = React.useState<User | null>(() => {
     const token = getAuthToken();
-    if (!token) return null;
+    if (!token) {
+      // 토큰이 없으면 사용자 데이터 초기화
+      useBookStateStore.getState().clearBookStates();
+      useLibraryStore.getState().clearLibraries();
+      return null;
+    }
 
     return getUserFromStorage();
   });
@@ -145,6 +152,7 @@ export const useAuth = () => {
    * - localStorage에서 사용자 정보 삭제
    * - React Query 캐시 초기화
    * - 로컬 상태 초기화
+   * - Zustand 스토어 초기화 (찜하기, 도서관 등)
    */
   const signout = React.useCallback(() => {
     try {
@@ -160,6 +168,10 @@ export const useAuth = () => {
       // 4. React Query 캐시 무효화
       queryClient.clear();
       queryClient.setQueryData([QUERY_KEYS.USER_PROFILE], null);
+
+      // 5. Zustand 스토어 초기화
+      useBookStateStore.getState().clearBookStates();
+      useLibraryStore.getState().clearLibraries();
 
       console.log('로그아웃 완료');
     } catch (error) {

@@ -21,9 +21,10 @@ import { useBookDetail } from "@/hooks/useBookDetail";
 import { useBookAvailability } from "@/hooks/useBookAvailability";
 import { useUserBookState } from "@/hooks/useUserBookState";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useBookStateStore } from "@/store/useBookStateStore";
+import { useAuth } from "@/hooks/useAuth";
+import { updateBookReview } from "@/api/user";
 import { formatRating } from "@/utils/formatters";
-import { calculateDistance } from "@/utils/helpers";
+import { calculateDistance, generateKakaoMapUrl } from "@/utils/helpers";
 import { findBookById } from "@/utils/mockData";
 import type { ReadingState, UserBookState } from "@/types/user";
 
@@ -70,6 +71,9 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
   // 사용자 위치 정보 가져오기
   const { latitude, longitude, isLoading: isLoadingLocation, error: locationError } = useGeolocation();
 
+  // 인증 상태
+  const { isAuthenticated } = useAuth();
+
   // 도서관 필터링 및 정렬 (5km 이내 + 즐겨찾기 우선)
   const filteredAndSortedLibraries = React.useMemo(() => {
     if (!availability.length) return [];
@@ -111,11 +115,8 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
   }, [currentPage]);
 
   // 독서 상태 (ISBN 사용)
-  const { bookState, currentState, updateState } =
+  const { bookState, currentState, updateState, removeState, refetch } =
     useUserBookState(isbn);
-
-  // Zustand store
-  const { setBookState: saveBookState } = useBookStateStore();
 
   // 독서 상태 변경
   const handleStateChange = async (state: ReadingState) => {
@@ -126,10 +127,27 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
     }
   };
 
-  // 독서 상태 상세 정보 저장
-  const handleSaveBookState = (state: UserBookState) => {
+  // 독서 상태 상세 정보 저장 (백엔드 연동)
+  const handleSaveBookState = async (state: UserBookState) => {
     try {
-      saveBookState(state);
+      // 1. 독서 상태 및 날짜 업데이트 (생성 또는 수정)
+      const updatedState = await updateState({
+        state: state.state,
+        startDate: state.startDate,
+        endDate: state.endDate,
+      });
+
+      // 2. 리뷰 또는 평점이 있으면 업데이트
+      if ((state.rating && state.rating > 0) || (state.comment && state.comment.trim())) {
+        if (!updatedState.recordId) {
+          throw new Error('Record ID is missing from the updated state');
+        }
+        await updateBookReview(updatedState.recordId, state.comment, state.rating);
+      }
+
+      // 3. 데이터 새로고침
+      await refetch();
+
       toast.success("독서 상태가 저장되었습니다!");
       setIsEditModalOpen(false);
     } catch (error) {
@@ -251,15 +269,37 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
               {/* 찜하기 + 내 서재에 추가 버튼 */}
               <div className="flex gap-3 mt-4">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    if (!isAuthenticated) {
+                      toast.error("로그인이 필요한 서비스입니다.");
+                      navigate('/login');
+                      return;
+                    }
                     const isWishlisted = currentState === "WISHLIST";
                     if (isWishlisted) {
                       // 찜 해제
-                      // TODO: 실제로는 removeBookState 사용
-                      toast.info("찜하기가 해제되었습니다.");
+                      try {
+                        const targetId = bookState?.recordId;
+                        if (!targetId) {
+                          console.error("삭제할 Record ID를 찾을 수 없습니다.", bookState);
+                          toast.error("데이터 오류로 인해 해제할 수 없습니다.");
+                          return;
+                        }
+                        await removeState(targetId);
+                        toast.info("찜하기가 해제되었습니다.");
+                      } catch (error) {
+                        console.error("Failed to remove wishlist:", error);
+                        toast.error("찜하기 해제에 실패했습니다.");
+                      }
                     } else {
-                      handleStateChange("WISHLIST");
-                      toast.success("찜 목록에 추가되었습니다!");
+                      // 찜하기 추가
+                      try {
+                        await handleStateChange("WISHLIST");
+                        toast.success("찜 목록에 추가되었습니다!");
+                      } catch (error) {
+                        console.error("Failed to add wishlist:", error);
+                        toast.error("찜하기 추가에 실패했습니다.");
+                      }
                     }
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
@@ -273,7 +313,14 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
                 </button>
 
                 <button
-                  onClick={() => setIsEditModalOpen(!isEditModalOpen)}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("로그인이 필요한 서비스입니다.");
+                      navigate('/login');
+                      return;
+                    }
+                    setIsEditModalOpen(!isEditModalOpen);
+                  }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition-colors font-medium text-sm"
                 >
                   내 서재에 추가
@@ -302,7 +349,7 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
               근처 도서관 ({filteredAndSortedLibraries.length}개)
             </h2>
             <button
-              onClick={() => navigate('/my-library')}
+              onClick={() => navigate('/mylibrary')}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
               내 도서관 관리 →
@@ -395,6 +442,21 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
                             className="flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                           >
                             🏠 홈페이지
+                          </button>
+                        )}
+                        {item.latitude && item.longitude && (
+                          <button
+                            onClick={() => {
+                              const mapUrl = generateKakaoMapUrl(
+                                item.libraryName,
+                                item.latitude!,
+                                item.longitude!
+                              );
+                              window.open(mapUrl, '_blank');
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                          >
+                            🗺️ 지도보기
                           </button>
                         )}
                       </div>

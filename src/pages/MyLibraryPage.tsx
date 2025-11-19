@@ -11,6 +11,8 @@
  */
 
 import * as React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { LibraryCard } from "@/components/LibraryCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { EmptyLibraryList } from "@/components/EmptyState";
@@ -32,12 +34,21 @@ interface MyLibraryPageProps {
  * 내 도서관 관리 페이지 컴포넌트
  */
 export const MyLibraryPage: React.FC<MyLibraryPageProps> = ({ onGoBack }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [selectedRegion, setSelectedRegion] = React.useState("");
   const [selectedDistrict, setSelectedDistrict] = React.useState("");
   const [libraryName, setLibraryName] = React.useState("");
   const [searchResults, setSearchResults] = React.useState<Library[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [searchError, setSearchError] = React.useState<string>("");
+
+  // 인증 체크
+  React.useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, navigate]);
 
   // 내 도서관 관리
   const {

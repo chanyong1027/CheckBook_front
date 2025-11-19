@@ -73,11 +73,12 @@ export const fetchBookAvailability = async (
     }
   );
 
+  console.log("📚 도서관 상태 원본 데이터:", response.data);
   // 백엔드 LibraryBookStatusDto를 프론트엔드 BookLibraryAvailability로 변환
   return response.data.map((item: any) => ({
     libraryId: String(item.libId),
     bookId: isbn,
-    available: item.loanAvailable === true,
+    available: item.isLoanAvailable === true || (item.LoanAvailable === true),
     hasBook: item.hasBook === true,
     libraryName: item.libName,
     libraryAddress: item.address,
@@ -85,7 +86,7 @@ export const fetchBookAvailability = async (
     libraryHomepage: item.homepage,
     latitude: item.latitude,
     longitude: item.longitude,
-    isFavorite: item.isFavorite === true,
+    isFavorite: item.isFavorite === true || (item.favorite === true),
   }));
 };
 
