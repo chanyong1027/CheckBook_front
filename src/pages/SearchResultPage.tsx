@@ -33,7 +33,6 @@ export const SearchResultPage: React.FC = () => {
   const {
     books: apiBooks,
     totalCount,
-    loadedPages,
     isLoading,
     isFetchingNextPage,
     hasNextPage,
@@ -41,7 +40,6 @@ export const SearchResultPage: React.FC = () => {
     error,
     fetchNextPage,
     refetch,
-    isEmpty,
   } = useBookSearch({ query, pageSize: 12 });
 
   // Mock 데이터 fallback (개발 중)

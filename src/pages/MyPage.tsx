@@ -32,7 +32,7 @@ function MyPage() {
   }, [isAuthenticated, isLoading, navigate]);
 
   // 백엔드에서 모든 독서 기록 가져오기
-  const { bookStates: allBookStates, isLoading: isLoadingBooks } = useUserBookStates();
+  const { bookStates: allBookStates } = useUserBookStates();
 
   // 상태별로 필터링 (useMemo로 메모이제이션)
   const wishlistBooks = useMemo(
@@ -63,7 +63,7 @@ function MyPage() {
   const genreData = useMemo(() => {
     const genreCounts: Record<string, number> = {};
 
-    readBooks.forEach((bookState) => {
+    readBooks.forEach(() => {
       // 백엔드에서 카테고리 정보를 제공하지 않으므로 기타로 분류
       const category = '기타';
       genreCounts[category] = (genreCounts[category] || 0) + 1;

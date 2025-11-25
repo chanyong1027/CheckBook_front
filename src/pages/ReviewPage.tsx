@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserBookStates } from '@/hooks/useUserBookState';
-import { updateBookReview } from '@/api/user';
+import { updateBookReview, deleteUserBookState } from '@/api/user';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import type { UserBookState } from '@/types/user';
 
@@ -75,6 +75,29 @@ export const ReviewPage = () => {
     } catch (error) {
       console.error('Failed to save review:', error);
       toast.error('리뷰 저장에 실패했습니다.');
+    }
+  };
+
+  // 독서 기록 삭제 (백엔드 연동)
+  const handleDeleteRecord = async (bookState: UserBookState) => {
+    if (!bookState.recordId) {
+      toast.error('삭제할 수 없습니다. recordId가 없습니다.');
+      return;
+    }
+
+    // 확인 메시지
+    if (!window.confirm(`"${bookState.bookTitle || '이 책'}"을(를) 내 도서관에서 삭제하시겠습니까?\n리뷰와 독서 기록이 모두 삭제됩니다.`)) {
+      return;
+    }
+
+    try {
+      await deleteUserBookState(bookState.recordId);
+      toast.success('독서 기록이 삭제되었습니다.');
+      // 데이터 다시 가져오기
+      refetch();
+    } catch (error) {
+      console.error('Failed to delete record:', error);
+      toast.error('삭제에 실패했습니다.');
     }
   };
 
@@ -155,6 +178,7 @@ export const ReviewPage = () => {
                   key={bookState.bookId}
                   bookState={bookState}
                   onSave={handleSaveReview}
+                  onDelete={handleDeleteRecord}
                   onViewDetail={() => navigate(`/book/${bookState.bookId}`)}
                 />
               );
@@ -220,10 +244,11 @@ export const ReviewPage = () => {
 interface ReviewCardProps {
   bookState: UserBookState;
   onSave: (bookState: UserBookState, comment: string, rating?: number) => void;
+  onDelete: (bookState: UserBookState) => void;
   onViewDetail: () => void;
 }
 
-const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, onSave, onViewDetail }) => {
+const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, onSave, onDelete, onViewDetail }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [comment, setComment] = useState(bookState.comment || '');
   const [rating, setRating] = useState(bookState.rating || 0);
@@ -292,12 +317,20 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ bookState, onSave, onViewDetail
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-base font-semibold text-gray-900">나의 리뷰</h4>
             {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-sm text-primary hover:text-blue-600 font-medium"
-              >
-                {bookState.comment ? '수정' : '작성'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="text-sm text-primary hover:text-blue-600 font-medium"
+                >
+                  {bookState.comment ? '수정' : '작성'}
+                </button>
+                <button
+                  onClick={() => onDelete(bookState)}
+                  className="text-sm text-red-500 hover:text-red-600 font-medium"
+                >
+                  삭제
+                </button>
+              </div>
             )}
           </div>
 

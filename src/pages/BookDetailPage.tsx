@@ -447,12 +447,14 @@ export const BookDetailPage: React.FC<BookDetailPageProps> = ({
                         {item.latitude && item.longitude && (
                           <button
                             onClick={() => {
-                              const mapUrl = generateKakaoMapUrl(
-                                item.libraryName,
-                                item.latitude!,
-                                item.longitude!
-                              );
-                              window.open(mapUrl, '_blank');
+                              if (item.latitude !== undefined && item.longitude !== undefined && item.libraryName) {
+                                const mapUrl = generateKakaoMapUrl(
+                                  item.libraryName,
+                                  item.latitude,
+                                  item.longitude
+                                );
+                                window.open(mapUrl, '_blank');
+                              }
                             }}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                           >

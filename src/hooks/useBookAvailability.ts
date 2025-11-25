@@ -12,7 +12,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { fetchBookAvailability } from '@/api/books';
-import { useLibraryStore } from '@/store/useLibraryStore';
 import { QUERY_KEYS } from '@/utils/constants';
 import type { BookLibraryAvailability } from '@/types/book';
 

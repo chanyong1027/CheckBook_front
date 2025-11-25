@@ -127,10 +127,7 @@ export const fetchBestsellers = async (): Promise<Book[]> => {
  * 인기 도서 목록 조회
  * @deprecated Use fetchBestsellers instead
  */
-export const fetchPopularBooks = async (
-  period: 'week' | 'month' | 'year' = 'week',
-  limit = 10
-): Promise<Book[]> => {
+export const fetchPopularBooks = async (): Promise<Book[]> => {
   // Fallback to bestsellers
   return fetchBestsellers();
 };
@@ -152,7 +149,7 @@ export const fetchNewReleases = async (): Promise<Book[]> => {
  * 신간 도서 목록 조회
  * @deprecated Use fetchNewReleases instead
  */
-export const fetchNewBooks = async (category?: string, limit = 10): Promise<Book[]> => {
+export const fetchNewBooks = async (): Promise<Book[]> => {
   // Fallback to new releases
   return fetchNewReleases();
 };

@@ -139,7 +139,7 @@ export const SignupPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* 로고 섹션 */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Book📚</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">CheckBook📚</h1>
           <p className="text-gray-600">새로운 독서 여정을 시작하세요</p>
         </div>
 

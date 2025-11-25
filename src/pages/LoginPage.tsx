@@ -5,8 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "react-toastify";
 import { useAuth } from "@/hooks/useAuth";
-import { setAuthToken } from "@/api/index";
-import type { User } from "@/types/user";
 
 // 로그인 폼 스키마
 const loginSchema = z.object({

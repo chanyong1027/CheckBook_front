@@ -20,7 +20,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import type { ReadingState, UserBookState } from '@/types/user';
+import type { UserBookState } from '@/types/user';
 import { READING_STATE_LABELS } from '@/utils/constants';
 
 /**

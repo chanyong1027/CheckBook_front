@@ -86,7 +86,7 @@ export const useBookSearch = ({
     },
 
     // 이전 페이지 파라미터 계산 (선택적)
-    getPreviousPageParam: (firstPage, allPages) => {
+    getPreviousPageParam: (_firstPage, allPages) => {
       const currentPage = allPages.length;
       return currentPage > 1 ? currentPage - 1 : undefined;
     },

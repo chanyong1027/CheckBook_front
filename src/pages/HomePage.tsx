@@ -134,9 +134,9 @@ export const HomePage: React.FC<HomePageProps> = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6 mb-6">
             {displayedBooks.map((book, index) => (
               <div
-                key={book.isbn13 || book.isbn || book.id || `bestseller-${index}`}
+                key={book.isbn13 || book.id || `bestseller-${index}`}
                 className="cursor-pointer group"
-                onClick={() => navigate(`/book/${book.isbn13 || book.isbn || book.id}`)}
+                onClick={() => navigate(`/book/${book.isbn13 || book.id}`)}
               >
                 {/* 도서 커버 */}
                 <div className="aspect-[2/3] bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
@@ -215,9 +215,9 @@ export const HomePage: React.FC<HomePageProps> = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
                 {newBooks.slice(0, 12).map((book, index) => (
               <div
-                key={book.isbn13 || book.isbn || book.id || `newbook-${index}`}
+                key={book.isbn13 || book.id || `newbook-${index}`}
                 className="cursor-pointer group"
-                onClick={() => navigate(`/book/${book.isbn13 || book.isbn || book.id}`)}
+                onClick={() => navigate(`/book/${book.isbn13 || book.id}`)}
               >
                 {/* 도서 커버 */}
                 <div className="aspect-[2/3] bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg mb-3 overflow-hidden shadow-md group-hover:shadow-xl transition-shadow">
