@@ -28,7 +28,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // 15초 타임아웃
+  timeout: 60000, // 60초 타임아웃 (도서관 대출 조회는 시간이 오래 걸림)
 });
 
 /**
